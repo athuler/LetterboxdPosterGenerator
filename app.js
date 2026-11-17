@@ -116,9 +116,108 @@ const W = 1500, PAD = 70, GAP_RATIO = 0.08;
 let frame = 0;
 function scheduleRender() { if (!frame) frame = requestAnimationFrame(() => { frame = 0; render(); }); }
 
+const rgb = hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+const hex = c => '#' + c.map(v => Math.round(v).toString(16).padStart(2, '0')).join('');
+const mix = (a, b, t) => hex(rgb(a).map((v, i) => v + (rgb(b)[i] - v) * t));
 function contrast(hex) {
-  const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+  const [r, g, b] = rgb(hex);
   return 0.299 * r + 0.587 * g + 0.114 * b > 140 ? '#151515' : '#f2f2f2';
+}
+
+// Fonts already on people's devices (nothing to download, and the canvas can use them straight away).
+const FONTS = {
+  sans: ['Sans', 'system-ui, sans-serif'],
+  serif: ['Serif', 'Georgia, "Times New Roman", serif'],
+  rounded: ['Rounded', 'ui-rounded, "Arial Rounded MT Bold", "Nunito", system-ui, sans-serif'],
+  condensed: ['Condensed', '"Arial Narrow", "Roboto Condensed", "Helvetica Neue", sans-serif-condensed, sans-serif'],
+  display: ['Display', 'Impact, Haettenschweiler, "Arial Black", sans-serif'],
+  mono: ['Mono', 'ui-monospace, Menlo, Consolas, monospace'],
+};
+const font = key => (FONTS[key] || FONTS.sans)[1];
+
+// One-click looks; every value can be tweaked afterwards. Keys match the Style control ids.
+const PRESETS = {
+  Letterboxd: { 'bg-style': 'solid', bg: '#14181c', bg2: '#2c3440', 'fg-auto': true, 'title-font': 'sans', 'title-size': 76, 'cap-font': 'sans', 'cap-size': 1, border: 'none' },
+  Paper: { 'bg-style': 'solid', bg: '#f4efe6', bg2: '#e6dccb', 'fg-auto': false, fg: '#2b2620', 'title-font': 'serif', 'title-size': 84, 'cap-font': 'serif', 'cap-size': 1, border: 'double' },
+  Cinema: { 'bg-style': 'gradient', bg: '#120607', bg2: '#4a0f14', 'fg-auto': false, fg: '#f3e6c8', 'title-font': 'condensed', 'title-size': 100, 'cap-font': 'condensed', 'cap-size': 1.05, border: 'film' },
+  Midnight: { 'bg-style': 'spotlight', bg: '#070b1c', bg2: '#2a3a78', 'fg-auto': false, fg: '#e8ecff', 'title-font': 'sans', 'title-size': 80, 'cap-font': 'sans', 'cap-size': 1, border: 'corners' },
+  Garden: { 'bg-style': 'dots', bg: '#fdf3f2', bg2: '#f2b8c6', 'fg-auto': false, fg: '#6b2e3f', 'title-font': 'rounded', 'title-size': 84, 'cap-font': 'rounded', 'cap-size': 1, border: 'flowers' },
+  Mono: { 'bg-style': 'grid', bg: '#ffffff', bg2: '#e4e4e4', 'fg-auto': false, fg: '#111111', 'title-font': 'mono', 'title-size': 70, 'cap-font': 'mono', 'cap-size': 0.95, border: 'line' },
+};
+
+function drawBackground(c, s, H) {
+  if (s.bgStyle === 'gradient' || s.bgStyle === 'spotlight') {
+    const g = s.bgStyle === 'gradient' ? c.createLinearGradient(0, 0, 0, H)
+      : c.createRadialGradient(W / 2, H * 0.4, 0, W / 2, H * 0.4, Math.hypot(W, H) * 0.6);
+    g.addColorStop(0, s.bgStyle === 'gradient' ? s.bg : s.bg2);
+    g.addColorStop(1, s.bgStyle === 'gradient' ? s.bg2 : s.bg);
+    c.fillStyle = g;
+  } else c.fillStyle = s.bg;
+  c.fillRect(0, 0, W, H);
+  if (!['dots', 'stripes', 'grid'].includes(s.bgStyle)) return;
+  c.save();
+  c.fillStyle = c.strokeStyle = s.bg2;
+  c.beginPath();
+  if (s.bgStyle === 'dots') {
+    for (let y = 15; y < H; y += 30) for (let x = 15 + (y / 30 % 2) * 15; x < W; x += 30) { c.moveTo(x + 3, y); c.arc(x, y, 3, 0, 2 * Math.PI); }
+    c.fill();
+  } else if (s.bgStyle === 'stripes') {
+    c.lineWidth = 9;
+    for (let x = -H; x < W; x += 34) { c.moveTo(x, H); c.lineTo(x + H, 0); }
+    c.stroke();
+  } else {
+    c.lineWidth = 1.5;
+    for (let x = 0; x <= W; x += 40) { c.moveTo(x, 0); c.lineTo(x, H); }
+    for (let y = 0; y <= H; y += 40) { c.moveTo(0, y); c.lineTo(W, y); }
+    c.stroke();
+  }
+  c.restore();
+}
+
+// Borders live in the page margin (PAD), so they never cover a poster.
+function drawBorder(c, s, H) {
+  if (s.border === 'none') return;
+  c.save();
+  c.strokeStyle = c.fillStyle = s.fg;
+  c.globalAlpha = 0.85;
+  const m = 28;
+  if (s.border === 'line') { c.lineWidth = 3; c.strokeRect(m, m, W - 2 * m, H - 2 * m); }
+  else if (s.border === 'double') {
+    c.lineWidth = 3; c.strokeRect(m - 6, m - 6, W - 2 * m + 12, H - 2 * m + 12);
+    c.lineWidth = 1.5; c.strokeRect(m + 4, m + 4, W - 2 * m - 8, H - 2 * m - 8);
+  } else if (s.border === 'corners') {
+    const L = Math.min(110, W / 6, H / 6);
+    c.lineWidth = 4;
+    c.beginPath();
+    for (const [x, y, dx, dy] of [[m, m, 1, 1], [W - m, m, -1, 1], [m, H - m, 1, -1], [W - m, H - m, -1, -1]]) {
+      c.moveTo(x + dx * L, y); c.lineTo(x, y); c.lineTo(x, y + dy * L);
+      c.moveTo(x + dx * (L * 0.55), y + dy * 12); c.lineTo(x + dx * 12, y + dy * 12); c.lineTo(x + dx * 12, y + dy * (L * 0.55));
+    }
+    c.stroke();
+  } else if (s.border === 'film') {
+    // Sprocket holes down both sides, like a strip of 35 mm film.
+    c.beginPath();
+    for (let y = 22; y + 16 < H - 10; y += 38) for (const x of [16, W - 16 - 24]) c.roundRect(x, y, 24, 16, 3);
+    c.fill();
+    c.globalAlpha = 0.35; c.lineWidth = 2;
+    c.beginPath(); c.moveTo(52, 0); c.lineTo(52, H); c.moveTo(W - 52, 0); c.lineTo(W - 52, H); c.stroke();
+  } else if (s.border === 'flowers') {
+    // Small five-petal flowers spaced evenly around the frame.
+    const flower = (x, y) => {
+      c.globalAlpha = 0.8; c.fillStyle = s.fg;
+      for (let k = 0; k < 5; k++) {
+        const a = k * 2 * Math.PI / 5 - Math.PI / 2;
+        c.beginPath(); c.arc(x + Math.cos(a) * 8, y + Math.sin(a) * 8, 6.5, 0, 2 * Math.PI); c.fill();
+      }
+      c.globalAlpha = 1; c.fillStyle = s.bg2;
+      c.beginPath(); c.arc(x, y, 4.5, 0, 2 * Math.PI); c.fill();
+    };
+    const m2 = 34, step = 64;
+    const along = (len, f) => { const n = Math.max(1, Math.round(len / step)); for (let i = 0; i <= n; i++) f(i * len / n); };
+    along(W - 2 * m2, d => { flower(m2 + d, m2); flower(m2 + d, H - m2); });
+    along(H - 2 * m2, d => { if (d > 0 && d < H - 2 * m2) { flower(m2, m2 + d); flower(W - m2, m2 + d); } });
+  }
+  c.restore();
 }
 function fit(c, text, maxW) {
   if (c.measureText(text).width <= maxW) return text;
@@ -127,12 +226,12 @@ function fit(c, text, maxW) {
 }
 const stars = r => '★'.repeat(Math.floor(r)) + (r % 1 ? '½' : '');
 
-function textTile(c, f, x, y, w, h, fg) {
+function textTile(c, f, x, y, w, h, fg, family) {
   c.save();
   c.globalAlpha = 0.12; c.fillStyle = fg; c.fillRect(x, y, w, h);
-  c.globalAlpha = 1; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.globalAlpha = 1; c.fillStyle = fg; c.textAlign = 'center'; c.textBaseline = 'middle';
   const size = Math.max(12, w / 9);
-  c.font = `600 ${size}px system-ui, sans-serif`;
+  c.font = `600 ${size}px ${family}`;
   const lines = [];
   for (const word of f.name.split(' ')) {
     const last = lines.length - 1;
@@ -151,14 +250,14 @@ const shown = () => $('hide-missing').checked ? films.filter(f => f.poster !== n
 // colsArg overrides the Columns field (used to try counts for Auto).
 function layout(colsArg) {
   const list = shown(), n = list.length;
-  const title = $('title').value.trim();
+  const style = styleOf();
+  const title = $('title-on').checked ? $('title').value.trim() : '';
   const cap = { title: $('cap-title').checked, year: $('cap-year').checked, rating: $('cap-rating').checked };
   const line2 = cap.year || cap.rating; // year and rating share the second caption line
   const lines = cap.title + line2;
-  const bg = $('bg').value, fg = contrast(bg);
   const ratio = Number($('size').value) || 0; // page height / width; 0 = grow to fit the films
-  const headH = title ? 150 : 0;
-  const capSizeFor = tw => Math.max(11, Math.min(26, tw / 10));
+  const headH = title ? style.titleSize + 74 : 0; // 150 at the default title size
+  const capSizeFor = tw => Math.max(11, Math.min(26, tw / 10)) * style.capScale;
   const capFor = tw => lines ? capSizeFor(tw) * (0.4 + 1.2 * lines) : 0;
 
   function grid(cols) {
@@ -185,7 +284,20 @@ function layout(colsArg) {
   const at = i => [x0 + (i % cols) * (tileW + gap), y0 + Math.floor(i / cols) * (tileH + capH + gap)];
   // The smallest text on the poster, in poster units (0 = none): drives the download recommendations.
   const minText = !n ? 0 : line2 ? capSize * 0.9 : cap.title ? capSize : 0;
-  return { list, cols, title, cap, line2, bg, fg, ratio, headH, H, availH, tileW, tileH, capSize, minText, at };
+  return { list, cols, title, cap, line2, style, fg: style.fg, ratio, headH, H, availH, tileW, tileH, capSize, minText, at };
+}
+
+function styleOf() {
+  const bgStyle = $('bg-style').value, bg = $('bg').value, bg2 = $('bg2').value;
+  // Auto text colour reads against the background's average tone.
+  const tone = ['gradient', 'spotlight'].includes(bgStyle) ? mix(bg, bg2, 0.5) : bg;
+  return {
+    bgStyle, bg, bg2,
+    fg: $('fg-auto').checked ? contrast(tone) : $('fg').value,
+    titleFont: font($('title-font').value), titleSize: Number($('title-size').value) || 76,
+    capFont: font($('cap-font').value), capScale: Number($('cap-size').value) || 1,
+    border: $('border').value,
+  };
 }
 
 // The best column count: on a fixed page, the one that makes the posters biggest;
@@ -207,14 +319,16 @@ function autoCols() {
 // Draw the poster onto context c at `scale` output pixels per poster unit.
 function draw(c, L, scale) {
   c.setTransform(scale, 0, 0, scale, 0, 0); // draw in poster units
-  c.fillStyle = L.bg; c.fillRect(0, 0, W, L.H);
+  const s = L.style;
+  drawBackground(c, s, L.H);
+  drawBorder(c, s, L.H);
   c.fillStyle = L.fg; c.textAlign = 'center'; c.textBaseline = 'top';
   if (L.title) {
-    c.font = 'bold 76px system-ui, sans-serif';
+    c.font = `bold ${s.titleSize}px ${s.titleFont}`;
     c.fillText(fit(c, L.title, W - 2 * PAD), W / 2, PAD);
   }
   if (!L.list.length) {
-    c.font = '36px system-ui, sans-serif'; c.globalAlpha = 0.6;
+    c.font = `36px ${s.capFont}`; c.globalAlpha = 0.6;
     c.fillText(films.length ? 'No films with posters' : 'Drop your Letterboxd export or add films',
       W / 2, PAD + L.headH + L.availH / 2 - 18);
     c.globalAlpha = 1;
@@ -224,16 +338,16 @@ function draw(c, L, scale) {
     const [x, y] = L.at(i);
     const img = f.poster && posterImage(f.poster, tileW * scale);
     if (ready(img)) c.drawImage(img, x, y, tileW, tileH);
-    else textTile(c, f, x, y, tileW, tileH, L.fg);
+    else textTile(c, f, x, y, tileW, tileH, L.fg, s.capFont);
     c.fillStyle = L.fg; c.textAlign = 'center'; c.textBaseline = 'top';
     let ty = y + tileH + capSize * 0.4;
     if (cap.title) {
-      c.font = `600 ${capSize}px system-ui, sans-serif`;
+      c.font = `600 ${capSize}px ${s.capFont}`;
       c.fillText(fit(c, f.name, tileW), x + tileW / 2, ty);
       ty += capSize * 1.2;
     }
     if (L.line2) {
-      c.font = `${capSize * 0.9}px system-ui, sans-serif`;
+      c.font = `${capSize * 0.9}px ${s.capFont}`;
       c.globalAlpha = 0.7;
       c.fillText(fit(c, [cap.year && f.year, cap.rating && f.rating ? stars(f.rating) : ''].filter(Boolean).join('  '), tileW),
         x + tileW / 2, ty);
@@ -249,6 +363,11 @@ function render() {
   canvas.width = Math.floor(W * scale);
   canvas.height = Math.floor(L.H * scale);
   draw(ctx, L, scale);
+
+  // Keep the Style controls honest: show the automatic text colour, and the second colour only when used.
+  if ($('fg-auto').checked) $('fg').value = L.fg;
+  $('bg2').disabled = L.style.bgStyle === 'solid' && L.style.border !== 'flowers';
+  for (const id of ['title-font', 'title-size']) $(id).disabled = !$('title-on').checked;
 
   // Line the editing overlay up with the drawn posters, in % so it follows the canvas's CSS size.
   const pct = (v, total) => (v / total * 100) + '%';
@@ -348,8 +467,9 @@ function update() { applySort(); renderTiles(); resolvePosters(); scheduleRender
 
 // ---------- Persistence: settings + film list in localStorage, recent zips in IndexedDB ----------
 // Everything stays in this browser. Storage can be blocked (private windows), so every access is guarded.
-const SETTINGS = ['title', 'size', 'cols', 'bg', 'sort'];
-const CHECKS = ['cap-title', 'cap-year', 'cap-rating', 'hide-missing'];
+const STYLE = ['bg-style', 'bg', 'bg2', 'fg', 'title-font', 'title-size', 'cap-font', 'cap-size', 'border'];
+const SETTINGS = ['title', 'size', 'cols', 'sort', ...STYLE];
+const CHECKS = ['cap-title', 'cap-year', 'cap-rating', 'hide-missing', 'fg-auto', 'title-on'];
 const MAX_RECENT = 3;
 let currentZipId = null;
 let saveTimer;
@@ -561,9 +681,35 @@ document.addEventListener('drop', e => {
   openZip(e.dataTransfer.files[0]);
 });
 $('source').onchange = pickSource;
-for (const id of ['title', 'size', 'cols', 'bg', 'cap-title', 'cap-year', 'cap-rating']) {
+for (const id of ['title', 'size', 'cols', 'cap-title', 'cap-year', 'cap-rating', 'title-on', 'fg-auto', ...STYLE]) {
   $(id).addEventListener('input', () => { scheduleRender(); saveState(); });
 }
+$('fg').addEventListener('input', () => { $('fg-auto').checked = false; }); // picking a colour turns Auto off
+
+// Style: font menus and preset buttons.
+for (const id of ['title-font', 'cap-font']) {
+  $(id).replaceChildren(...Object.entries(FONTS).map(([k, [name, stack]]) => {
+    const o = new Option(name, k);
+    o.style.fontFamily = stack;
+    return o;
+  }));
+}
+$('presets').replaceChildren(...Object.entries(PRESETS).map(([name, p]) => {
+  const b = document.createElement('button');
+  b.type = 'button';
+  const sw = document.createElement('span');
+  sw.className = 'swatch';
+  sw.style.background = p['bg-style'] === 'solid' ? p.bg : `linear-gradient(135deg, ${p.bg} 45%, ${p.bg2})`;
+  b.append(sw, name);
+  b.setAttribute('aria-label', `${name} style`);
+  b.onclick = () => {
+    for (const [id, v] of Object.entries(p)) {
+      if (typeof v === 'boolean') $(id).checked = v; else $(id).value = v;
+    }
+    scheduleRender(); saveState();
+  };
+  return b;
+}));
 $('size').addEventListener('change', autoCols); // a new page shape gets the best column count
 $('cols-auto').onclick = autoCols;
 $('hide-missing').onchange = update;

@@ -26,7 +26,16 @@
   input, select, button { font: inherit; color: inherit; }
   input[type=text], input[type=search], input[type=number], input[type=color], select { padding: 7px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); }
   .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-  .row label, label.check { display: flex; gap: 6px; align-items: center; }
+  .row label, label.check, label.inline { display: flex; gap: 6px; align-items: center; }
+  #style { display: grid; gap: 10px; margin: 0; padding: 10px 12px 12px; border: 1px solid var(--line); border-radius: 8px; min-width: 0; }
+  #style legend { padding: 0 4px; color: var(--muted); font-size: 13px; }
+  #style select { width: auto; flex: 1; min-width: 0; }
+  #style input[type=range] { flex: 1; min-width: 80px; accent-color: var(--accent); }
+  #style input[type=color] { width: 2.6em; padding: 2px 3px; height: 2.2em; }
+  #style input:disabled { opacity: .35; }
+  .presets { display: flex; flex-wrap: wrap; gap: 6px; }
+  .presets button { display: flex; align-items: center; gap: 6px; padding: 4px 8px 4px 4px; font-size: 13px; }
+  .presets .swatch { width: 18px; height: 18px; border-radius: 4px; border: 1px solid rgba(127,127,127,.4); }
   button { cursor: pointer; border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 6px 10px; }
   button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
   button:disabled, input:disabled { opacity: .5; cursor: not-allowed; }
@@ -139,13 +148,55 @@
         <button id="cols-inc" type="button" aria-label="More columns">+</button>
       </span>
       <button id="cols-auto" type="button" title="Set the number of columns that fits the poster best">Auto</button>
-      <label>Background <input id="bg" type="color" value="#14181c"></label>
     </div>
-    <div class="row" role="group" aria-label="Captions">Captions
-      <label><input id="cap-title" type="checkbox" checked> Title</label>
-      <label><input id="cap-year" type="checkbox" checked> Year</label>
-      <label><input id="cap-rating" type="checkbox" checked> Rating</label>
-    </div>
+
+    <fieldset id="style">
+      <legend>Style</legend>
+      <div id="presets" class="presets" role="group" aria-label="Style presets"></div>
+
+      <div class="row">Background
+        <select id="bg-style" aria-label="Background style">
+          <option value="solid">Solid</option>
+          <option value="gradient">Gradient</option>
+          <option value="spotlight">Spotlight</option>
+          <option value="dots">Dots</option>
+          <option value="stripes">Stripes</option>
+          <option value="grid">Grid</option>
+        </select>
+        <input id="bg" type="color" value="#14181c" aria-label="Background colour">
+        <input id="bg2" type="color" value="#2c3440" aria-label="Second background colour" title="Second colour">
+      </div>
+      <div class="row">Text colour
+        <label><input id="fg-auto" type="checkbox" checked> Auto</label>
+        <input id="fg" type="color" value="#f2f2f2" aria-label="Text colour">
+      </div>
+
+      <div class="row" role="group" aria-label="Poster title">
+        <label><input id="title-on" type="checkbox" checked> Title</label>
+        <select id="title-font" aria-label="Title font"></select>
+        <input id="title-size" type="range" min="40" max="150" step="2" value="76" aria-label="Title size">
+      </div>
+      <div class="row" role="group" aria-label="Captions">Captions
+        <label><input id="cap-title" type="checkbox" checked> Title</label>
+        <label><input id="cap-year" type="checkbox" checked> Year</label>
+        <label><input id="cap-rating" type="checkbox" checked> Rating</label>
+      </div>
+      <div class="row" role="group" aria-label="Caption style">
+        <select id="cap-font" aria-label="Caption font"></select>
+        <input id="cap-size" type="range" min="0.6" max="1.8" step="0.05" value="1" aria-label="Caption size">
+      </div>
+
+      <label class="inline">Border
+        <select id="border">
+          <option value="none">None</option>
+          <option value="line">Line</option>
+          <option value="double">Double line</option>
+          <option value="corners">Corners</option>
+          <option value="film">Film strip</option>
+          <option value="flowers">Flowers</option>
+        </select>
+      </label>
+    </fieldset>
 
     <label>Add a film <input id="search" type="search" placeholder="Search TMDB…" autocomplete="off"></label>
     <div id="results"></div>
