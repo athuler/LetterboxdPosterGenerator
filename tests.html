@@ -1,0 +1,34 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>parse.js self-check</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<pre id="out">running…</pre>
+<script type="module">
+import { parseExport } from './parse.js';
+const eq = (a, b, msg) => { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(`${msg}: ${JSON.stringify(a)} !== ${JSON.stringify(b)}`); };
+
+const list = `Letterboxd list export v7
+Date,Name,Tags,URL,Description
+2024-01-02,"Best of, the decade",,https://boxd.it/abc,"Some, description"
+
+Position,Name,Year,URL,Description
+1,"Crouching Tiger, Hidden Dragon",2000,https://boxd.it/1,
+2,"The ""Quoted"" Film",1999,https://boxd.it/2,"note"
+`;
+const l = parseExport(list, Papa, 'fallback');
+eq(l.title, 'Best of, the decade', 'list title');
+eq(l.films, [
+  { name: 'Crouching Tiger, Hidden Dragon', year: '2000', uri: 'https://boxd.it/1', rating: 0 },
+  { name: 'The "Quoted" Film', year: '1999', uri: 'https://boxd.it/2', rating: 0 },
+], 'list films');
+
+const ratings = `Date,Name,Year,Letterboxd URI,Rating
+2024-03-01,Heat,1995,https://boxd.it/h,4.5
+`;
+const r = parseExport(ratings, Papa, 'Ratings');
+eq(r.title, 'Ratings', 'fallback title');
+eq(r.films, [{ name: 'Heat', year: '1995', uri: 'https://boxd.it/h', rating: 4.5 }], 'ratings');
+
+eq(parseExport('garbage', Papa, 'x').films, [], 'no header');
+document.getElementById('out').textContent = 'PASS';
+</script>
