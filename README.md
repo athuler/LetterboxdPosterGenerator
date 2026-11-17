@@ -12,7 +12,7 @@ Turn your Letterboxd lists into a poster: a grid of film posters with an optiona
 6. Sort by list order, title, year, rating or date logged (the last two only when the source has them), or shuffle. Dragging a poster switches to **Custom**, which keeps your hand-made order while you try other sorts.
 7. Click **Download…**, choose **PNG** or **PDF (print)** and a size. PNG sizes are pixel dimensions (screen resolutions for wallpapers); PDF sizes are paper sizes matching the poster's shape, rendered at up to 300 dpi. Sizes where the captions would be too small to read easily (under 12 px, or 6 pt in print) are flagged, and the smallest size without that problem is marked **Recommended**. Each size also shows an estimated file size. Without captions, the recommendation is based on how sharp the poster art is. Exports use larger poster art when the size needs it, up to the biggest canvas your browser supports.
 
-Your work is saved in this browser: settings, the chosen list and your film edits come back on reload. The last 3 exports you opened are listed under **Recent uploads**, so you can reopen one with a click; ✕ removes one. Despite the name, nothing is sent anywhere: all of this stays in your browser (localStorage and IndexedDB).
+Your work is saved in this browser: settings, the chosen list and your film edits come back on reload. The last 3 exports you opened are listed under **Recent uploads**, so you can reopen one with a click; ✕ removes one. Despite the name, your exports and edits are never uploaded: all of this stays in your browser (localStorage and IndexedDB). The public site uses Google Analytics for visit statistics.
 
 There's no film limit. Very long lists are exported at a lower resolution, so the image stays within browser canvas limits.
 
@@ -75,6 +75,8 @@ Without a local key, `config.js` points `localhost` at the local Worker on port 
 5. Set `ALLOWED_ORIGINS` in [worker/wrangler.toml](worker/wrangler.toml) to the site's origin (currently `postergenerator.andreithuler.com`).
 
 **Site:** set **Settings → Pages → Source: GitHub Actions**, then push to `main`.
+
+**Analytics (optional):** add a repository variable (**Settings → Secrets and variables → Actions → Variables**) named `GA_MEASUREMENT_ID` with your Google Analytics ID (`G-…`). The deploy workflow then adds the Google tag to the published `index.html`; the repo copy and local runs stay untracked. Without the variable, nothing is added.
 
 ## Caching
 

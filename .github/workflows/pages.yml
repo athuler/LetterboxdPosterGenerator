@@ -23,6 +23,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+      # Google Analytics goes into the deployed page only, so local copies and forks stay untracked.
+      # Set the repository variable GA_MEASUREMENT_ID (e.g. G-ABC123XYZ) to turn it on.
+      - name: Inject Google Analytics
+        if: vars.GA_MEASUREMENT_ID != ''
+        env:
+          GA_ID: ${{ vars.GA_MEASUREMENT_ID }}
+        run: |
+          [[ "$GA_ID" =~ ^G-[A-Z0-9]+$ ]] || { echo "GA_MEASUREMENT_ID must look like G-XXXXXXX"; exit 1; }
+          snippet="<script async src=\"https://www.googletagmanager.com/gtag/js?id=$GA_ID\"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','$GA_ID');</script>"
+          grep -q '</head>' index.html
+          sed -i "s#</head>#$snippet\n</head>#" index.html
+          grep -c "gtag/js?id=$GA_ID" index.html
       - uses: actions/upload-pages-artifact@v3
         with:
           path: .
