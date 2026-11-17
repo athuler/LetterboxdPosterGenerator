@@ -39,6 +39,20 @@ No build step, no Node needed.
 
 On `localhost`, a key in `config.local.js` makes the app call TMDB directly, skipping the Worker. Parser self-check: <http://localhost:8765/tests.html> should show `PASS`.
 
+### Tests
+
+Browser tests ([tests/](tests/), [Playwright](https://playwright.dev)) cover importing an export, recent uploads and restoring after a reload, sorting, reordering and removing, search, hiding films without posters, poster sizes, columns, captions, the download dialog (including real PNG and PDF files) and the CSV parser. They fake TMDB and the poster images, so they need no API key or network for TMDB.
+
+Needs Node 18+ and Python 3 (for the static server the tests start on port 4173):
+
+```bash
+npm ci
+npx playwright install chromium
+npm test
+```
+
+GitHub Actions runs them on every pull request and branch push. On `main` they run before deploying, and a failure stops the deploy.
+
 ### Testing the Worker locally (optional)
 
 Only needed when changing `worker/`. Remove `config.local.js` (or leave its key empty), then run the Worker and the site in two terminals:

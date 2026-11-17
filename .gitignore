@@ -5,3 +5,7 @@ worker/.dev.vars
 # Wrangler state and deps.
 .wrangler/
 node_modules/
+
+# Playwright output.
+test-results/
+playwright-report/
