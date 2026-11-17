@@ -261,12 +261,111 @@ function renderTiles() {
   $('count').textContent = String(films.length);
 }
 
-function update() { applySort(); renderTiles(); resolvePosters(); scheduleRender(); }
+function update() { applySort(); renderTiles(); resolvePosters(); scheduleRender(); saveState(); }
+
+// ---------- Persistence: settings + film list in localStorage, recent zips in IndexedDB ----------
+// Everything stays in this browser. Storage can be blocked (private windows), so every access is guarded.
+const SETTINGS = ['title', 'cols', 'bg', 'sort'];
+const MAX_RECENT = 3;
+let currentZipId = null;
+let saveTimer;
+
+function saveState() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    const state = { zipId: currentZipId, source: $('source').value, captions: $('captions').checked, films };
+    for (const id of SETTINGS) state[id] = $(id).value;
+    try { localStorage.setItem('state', JSON.stringify(state)); } catch {}
+  }, 300);
+}
+
+const db = new Promise((resolve, reject) => {
+  try {
+    const req = indexedDB.open('poster-generator', 1);
+    req.onupgradeneeded = () => req.result.createObjectStore('zips', { keyPath: 'id' });
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  } catch (err) { reject(err); }
+});
+db.catch(() => {}); // no IndexedDB: recent exports are simply unavailable
+
+async function zips(mode, fn) {
+  const tx = (await db).transaction('zips', mode);
+  const req = fn(tx.objectStore('zips'));
+  return new Promise((resolve, reject) => {
+    tx.oncomplete = () => resolve(req.result);
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function rememberZip(file) {
+  const entry = { id: `${file.name}|${file.size}|${file.lastModified}`, name: file.name, size: file.size,
+    addedAt: Date.now(), file };
+  currentZipId = entry.id;
+  try {
+    await zips('readwrite', s => s.put(entry));
+    const all = (await zips('readonly', s => s.getAll())).sort((a, b) => b.addedAt - a.addedAt);
+    for (const old of all.slice(MAX_RECENT)) await zips('readwrite', s => s.delete(old.id));
+  } catch {}
+  renderRecent();
+}
+
+async function renderRecent() {
+  let all = [];
+  try { all = (await zips('readonly', s => s.getAll())).sort((a, b) => b.addedAt - a.addedAt); } catch {}
+  $('recent').hidden = !all.length;
+  $('recent-list').replaceChildren(...all.map(z => {
+    const li = document.createElement('li');
+    const open = document.createElement('button');
+    open.type = 'button';
+    open.className = 'recent-open';
+    const size = z.size >= 1e6 ? `${(z.size / 1e6).toFixed(1)} MB` : `${Math.ceil(z.size / 1e3)} KB`;
+    open.textContent = `${z.name} · ${size} · ${new Date(z.addedAt).toLocaleDateString()}`;
+    open.onclick = () => openZip(z.file);
+    const forget = document.createElement('button');
+    forget.type = 'button';
+    forget.textContent = '✕';
+    forget.setAttribute('aria-label', `Forget ${z.name}`);
+    forget.onclick = async () => {
+      try { await zips('readwrite', s => s.delete(z.id)); } catch {}
+      if (currentZipId === z.id) { currentZipId = null; saveState(); }
+      renderRecent();
+    };
+    li.append(open, forget);
+    return li;
+  }));
+}
+
+// A newly chosen file: keep it in the recent list, then load it.
+async function openZip(file) {
+  await rememberZip(file);
+  loadZip(file);
+}
+
+async function restore() {
+  let state = null;
+  try { state = JSON.parse(localStorage.getItem('state')); } catch {}
+  if (state) {
+    for (const id of SETTINGS) if (state[id] != null) $(id).value = state[id];
+    $('captions').checked = state.captions ?? true;
+    films = Array.isArray(state.films) ? state.films : [];
+    seq = films.reduce((m, f) => Math.max(m, f.order + 1, f.custom + 1), 0);
+    currentZipId = state.zipId ?? null; // set before update() so its save keeps the link
+  }
+  update();
+  renderRecent();
+  if (!currentZipId) return;
+  let entry;
+  try { entry = await zips('readonly', s => s.get(currentZipId)); } catch {}
+  if (!entry) { currentZipId = null; saveState(); return; } // zip was forgotten or storage cleared
+  loadZip(entry.file, state.source); // refills the Source menu without touching the restored films
+}
 
 // ---------- Zip import ----------
 const LABELS = { watchlist: 'Watchlist', watched: 'Watched', ratings: 'Ratings' };
 
-async function loadZip(file) {
+// restoreSource: when restoring after a reload, select this source but keep the saved film list.
+async function loadZip(file, restoreSource) {
   status(`Reading ${file.name}…`);
   try {
     const zip = await JSZip.loadAsync(file);
@@ -283,9 +382,14 @@ async function loadZip(file) {
     sources = found.sort((a, b) => a.order - b.order || a.title.localeCompare(b.title));
     $('source').replaceChildren(new Option('Start empty', ''),
       ...sources.map((s, i) => new Option(`${s.title} (${s.films.length})`, String(i))));
-    $('source').value = '0';
-    pickSource();
-    status(`Loaded ${sources.length} lists.`);
+    if (restoreSource !== undefined) {
+      $('source').value = restoreSource;
+      status(`Restored your last session from ${file.name}.`);
+    } else {
+      $('source').value = '0';
+      pickSource();
+      status(`Loaded ${sources.length} lists.`);
+    }
   } catch (err) {
     status(`Couldn't read that file: ${err.message}`);
   }
@@ -333,7 +437,7 @@ async function search(q) {
 }
 
 // ---------- Wiring ----------
-$('file').onchange = e => e.target.files[0] && loadZip(e.target.files[0]);
+$('file').onchange = e => e.target.files[0] && openZip(e.target.files[0]);
 document.addEventListener('dragover', e => {
   if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); document.body.classList.add('over'); }
 });
@@ -342,10 +446,10 @@ document.addEventListener('drop', e => {
   document.body.classList.remove('over');
   if (!e.dataTransfer.files.length) return;
   e.preventDefault();
-  loadZip(e.dataTransfer.files[0]);
+  openZip(e.dataTransfer.files[0]);
 });
 $('source').onchange = pickSource;
-for (const id of ['title', 'cols', 'captions', 'bg']) $(id).oninput = scheduleRender;
+for (const id of ['title', 'cols', 'captions', 'bg']) $(id).oninput = () => { scheduleRender(); saveState(); };
 $('clear').onclick = () => { films = []; update(); };
 $('sort').onchange = () => {
   if ($('sort').value === 'shuffle') for (const f of films) f.rand = Math.random(); // re-pick to reshuffle
@@ -371,4 +475,4 @@ $('download').onclick = () => {
 };
 
 if (LOCAL && !TMDB_API_KEY) status('Local dev: add your TMDB key in config.local.js (see README), or run the Worker on :8787.');
-update();
+restore();

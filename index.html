@@ -48,6 +48,9 @@
   .tile:hover button, .tile:focus-within button { opacity: 1; }
   @media (hover: none) { .tile button { opacity: .85; } }
   .hint { color: var(--muted); font-size: 13px; margin: 0; }
+  #recent-list { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; }
+  #recent-list li { display: flex; gap: 4px; }
+  .recent-open { flex: 1; min-width: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -62,6 +65,10 @@
       <small>Get it at <a href="https://letterboxd.com/data/export/" target="_blank" rel="noopener">letterboxd.com/data/export</a>. It never leaves your browser.</small>
     </label>
     <input id="file" type="file" accept=".zip,application/zip" hidden>
+    <div id="recent" hidden>
+      <b>Recent exports</b> <small class="hint">stored only in this browser</small>
+      <ul id="recent-list"></ul>
+    </div>
     <p id="status" role="status"></p>
 
     <label>Source

@@ -11,6 +11,8 @@ Turn your Letterboxd lists into a poster: a grid of film posters with an optiona
 5. Sort by list order, title, year, rating or date logged (the last two only when the source has them), or shuffle. Dragging a poster switches to **Custom**, which keeps your hand-made order while you try other sorts.
 6. Click **Download PNG**.
 
+Your work is saved in this browser: settings, the chosen list and your film edits come back on reload. The last 3 exports you opened are listed under **Recent exports**, so you can reopen one with a click; ✕ removes one. All of this stays in your browser (localStorage and IndexedDB) and is never uploaded.
+
 There's no film limit. Very long lists are exported at a lower resolution, so the image stays within browser canvas limits.
 
 ## How the TMDB key stays secret
