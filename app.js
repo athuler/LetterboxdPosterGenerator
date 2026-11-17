@@ -366,7 +366,7 @@ const LABELS = { watchlist: 'Watchlist', watched: 'Watched', ratings: 'Ratings' 
 
 // restoreSource: when restoring after a reload, select this source but keep the saved film list.
 async function loadZip(file, restoreSource) {
-  status(`Reading ${file.name}…`);
+  if (restoreSource === undefined) status(`Reading ${file.name}…`);
   try {
     const zip = await JSZip.loadAsync(file);
     const entries = Object.values(zip.files).filter(e => !e.dir && !/(^|\/)deleted\//.test(e.name));
@@ -383,8 +383,7 @@ async function loadZip(file, restoreSource) {
     $('source').replaceChildren(new Option('Start empty', ''),
       ...sources.map((s, i) => new Option(`${s.title} (${s.films.length})`, String(i))));
     if (restoreSource !== undefined) {
-      $('source').value = restoreSource;
-      status(`Restored your last session from ${file.name}.`);
+      $('source').value = restoreSource; // silent: the restored poster speaks for itself
     } else {
       $('source').value = '0';
       pickSource();
