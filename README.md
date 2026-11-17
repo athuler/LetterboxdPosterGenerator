@@ -49,7 +49,7 @@ Open <http://localhost:8765>. On `localhost`, `config.js` points at the local Wo
 2. Add repository secrets (**Settings → Secrets and variables → Actions**): `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `TMDB_API_KEY`.
 3. Run the **Deploy TMDB proxy Worker** workflow. It uploads `TMDB_API_KEY` as a Worker secret.
 4. Put the Worker's `https://letterboxd-poster-tmdb.<subdomain>.workers.dev` URL into `config.js`.
-5. If the site lives somewhere other than `https://athuler.github.io`, update `ALLOWED_ORIGINS` in [worker/wrangler.toml](worker/wrangler.toml).
+5. Set `ALLOWED_ORIGINS` in [worker/wrangler.toml](worker/wrangler.toml) to the site's origin (currently `postergenerator.andreithuler.com`).
 
 **Site:** set **Settings → Pages → Source: GitHub Actions**, then push to `main`.
 

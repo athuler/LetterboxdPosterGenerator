@@ -5,4 +5,5 @@ compatibility_date = "2025-01-01"
 # Sites allowed to call the proxy. Local dev origins go in .dev.vars, not here.
 # TMDB_API_KEY is a secret: set by the deploy workflow, or `npx wrangler secret put TMDB_API_KEY`.
 [vars]
-ALLOWED_ORIGINS = "https://athuler.github.io"
+# shortcut: http:// is allowed until GitHub issues the custom domain's HTTPS certificate; drop it after enabling "Enforce HTTPS".
+ALLOWED_ORIGINS = "https://postergenerator.andreithuler.com,http://postergenerator.andreithuler.com"
