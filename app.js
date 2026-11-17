@@ -81,15 +81,29 @@ function resolvePosters() {
 }
 
 const images = new Map();
-function image(path) {
-  if (!images.has(path)) {
+function image(path, size) {
+  const key = size + path;
+  if (!images.has(key)) {
     const img = new Image();
     img.crossOrigin = 'anonymous'; // keeps the canvas exportable
     img.onload = img.onerror = scheduleRender;
-    img.src = IMG + 'w342' + path;
-    images.set(path, img);
+    img.src = IMG + size + path;
+    images.set(key, img);
   }
-  return images.get(path);
+  return images.get(key);
+}
+
+// TMDB poster widths; never below w342 so small tiles reuse what's already cached.
+const IMG_SIZES = [['w342', 342], ['w500', 500], ['w780', 780]];
+const ready = img => img && img.complete && img.naturalWidth;
+// The smallest TMDB size that's sharp at this tile width (in output pixels); until it arrives,
+// fall back to any size already loaded so big posters never flash to text tiles.
+function posterImage(path, px) {
+  const [want] = IMG_SIZES.find(([, w]) => w >= px) || IMG_SIZES.at(-1);
+  const img = image(path, want);
+  if (ready(img)) return img;
+  for (const [s] of IMG_SIZES) if (ready(images.get(s + path))) return images.get(s + path);
+  return img;
 }
 
 // ---------- Rendering ----------
@@ -131,14 +145,28 @@ function render() {
   const title = $('title').value.trim();
   const captions = $('captions').checked;
   const bg = $('bg').value, fg = contrast(bg);
-  const tileW = (W - 2 * PAD) / (cols + (cols - 1) * GAP_RATIO), gap = tileW * GAP_RATIO, tileH = tileW * 1.5;
-  const capSize = Math.max(11, Math.min(26, tileW / 10));
-  const capH = captions ? capSize * 2.8 : 0;
+  const ratio = Number($('size').value) || 0; // page height / width; 0 = grow to fit the films
   const headH = title ? 150 : 0;
   const rows = Math.max(1, Math.ceil(films.length / cols));
+  const capFor = tw => captions ? Math.max(11, Math.min(26, tw / 10)) * 2.8 : 0;
+  const gridH = tw => rows * (tw * 1.5 + capFor(tw)) + (rows - 1) * tw * GAP_RATIO;
 
-  const H = 2 * PAD + headH + rows * (tileH + capH) + (rows - 1) * gap;
-  const scale = Math.min(1, Math.sqrt(MAX_AREA / (W * H)), MAX_SIDE / H);
+  // Tiles fill the width; on a fixed-size page they shrink until the grid also fits the height.
+  // (Captions have a minimum size, so one proportional step can undershoot: repeat a few times.)
+  let tileW = (W - 2 * PAD) / (cols + (cols - 1) * GAP_RATIO);
+  const H = ratio ? W * ratio : 2 * PAD + headH + gridH(tileW);
+  const availH = H - 2 * PAD - headH;
+  for (let k = 0; k < 5 && gridH(tileW) > availH; k++) tileW *= availH / gridH(tileW);
+
+  const gap = tileW * GAP_RATIO, tileH = tileW * 1.5;
+  const capSize = Math.max(11, Math.min(26, tileW / 10));
+  const capH = capFor(tileW);
+  // Centre the grid in whatever space is left over.
+  const x0 = (W - (cols * tileW + (cols - 1) * gap)) / 2;
+  const y0 = PAD + headH + Math.max(0, availH - gridH(tileW)) / 2;
+
+  // Fixed sizes are meant for printing: render as large as the browser allows. "Fit to films" stays at 1x.
+  const scale = Math.min(ratio ? Infinity : 1, Math.sqrt(MAX_AREA / (W * H)), MAX_SIDE / H);
   canvas.width = Math.floor(W * scale);
   canvas.height = Math.floor(H * scale);
   ctx.setTransform(scale, 0, 0, scale, 0, 0); // draw in poster units; the canvas size above already applied the scale
@@ -151,15 +179,15 @@ function render() {
   }
   if (!films.length) {
     ctx.font = '36px system-ui, sans-serif'; ctx.globalAlpha = 0.6;
-    ctx.fillText('Drop your Letterboxd export or add films', W / 2, PAD + headH + tileH / 2);
+    ctx.fillText('Drop your Letterboxd export or add films', W / 2, PAD + headH + availH / 2 - 18);
     ctx.globalAlpha = 1;
   }
 
   films.forEach((f, i) => {
-    const x = PAD + (i % cols) * (tileW + gap);
-    const y = PAD + headH + Math.floor(i / cols) * (tileH + capH + gap);
-    const img = f.poster && image(f.poster);
-    if (img && img.complete && img.naturalWidth) ctx.drawImage(img, x, y, tileW, tileH);
+    const x = x0 + (i % cols) * (tileW + gap);
+    const y = y0 + Math.floor(i / cols) * (tileH + capH + gap);
+    const img = f.poster && posterImage(f.poster, tileW * scale);
+    if (ready(img)) ctx.drawImage(img, x, y, tileW, tileH);
     else textTile(f, x, y, tileW, tileH, fg);
     if (captions) {
       ctx.fillStyle = fg; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
@@ -176,8 +204,8 @@ function render() {
   // Line the editing overlay up with the drawn posters, in % so it follows the canvas's CSS size.
   const pct = (v, total) => (v / total * 100) + '%';
   [...$('tiles').children].forEach((el, i) => {
-    el.style.left = pct(PAD + (i % cols) * (tileW + gap), W);
-    el.style.top = pct(PAD + headH + Math.floor(i / cols) * (tileH + capH + gap), H);
+    el.style.left = pct(x0 + (i % cols) * (tileW + gap), W);
+    el.style.top = pct(y0 + Math.floor(i / cols) * (tileH + capH + gap), H);
     el.style.width = pct(tileW, W);
     el.style.height = pct(tileH, H);
   });
@@ -264,7 +292,7 @@ function update() { applySort(); renderTiles(); resolvePosters(); scheduleRender
 
 // ---------- Persistence: settings + film list in localStorage, recent zips in IndexedDB ----------
 // Everything stays in this browser. Storage can be blocked (private windows), so every access is guarded.
-const SETTINGS = ['title', 'cols', 'bg', 'sort'];
+const SETTINGS = ['title', 'size', 'cols', 'bg', 'sort'];
 const MAX_RECENT = 3;
 let currentZipId = null;
 let saveTimer;
@@ -471,7 +499,7 @@ document.addEventListener('drop', e => {
   openZip(e.dataTransfer.files[0]);
 });
 $('source').onchange = pickSource;
-for (const id of ['title', 'cols', 'captions', 'bg']) $(id).oninput = () => { scheduleRender(); saveState(); };
+for (const id of ['title', 'size', 'cols', 'captions', 'bg']) $(id).oninput = () => { scheduleRender(); saveState(); };
 $('clear').onclick = () => { films = []; update(); };
 $('unload').onclick = unloadZip;
 $('sort').onchange = () => {

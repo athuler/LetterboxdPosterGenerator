@@ -8,8 +8,9 @@ Turn your Letterboxd lists into a poster: a grid of film posters with an optiona
 2. Drop the `.zip` on the page. It is read entirely in your browser, nothing is uploaded.
 3. Pick a source (any of your lists, Watchlist, Watched or Ratings), or start empty.
 4. Add films by searching TMDB (only TMDB results can be added), drag posters on the preview to reorder them, use ✕ (or Tab + arrow keys / Delete) to move and remove them, tweak the title, columns, captions and background.
-5. Sort by list order, title, year, rating or date logged (the last two only when the source has them), or shuffle. Dragging a poster switches to **Custom**, which keeps your hand-made order while you try other sorts.
-6. Click **Download PNG**.
+5. Pick a **Poster size**: "Fit to films" grows the image to fit, or choose a print ratio (A4, A3, A2, …, Letter, 2:3, 3:4, 4:5, 11×17, square) or a wallpaper size. Fixed sizes centre the grid on the page and export at about 16 megapixels, the most browsers allow, using larger poster art so prints stay sharp.
+6. Sort by list order, title, year, rating or date logged (the last two only when the source has them), or shuffle. Dragging a poster switches to **Custom**, which keeps your hand-made order while you try other sorts.
+7. Click **Download PNG**.
 
 Your work is saved in this browser: settings, the chosen list and your film edits come back on reload. The last 3 exports you opened are listed under **Recent uploads**, so you can reopen one with a click; ✕ removes one. Despite the name, nothing is sent anywhere: all of this stays in your browser (localStorage and IndexedDB).
 

@@ -90,6 +90,23 @@
       <select id="source"><option value="">Start empty</option></select>
     </label>
     <label>Poster title <input id="title" type="text" placeholder="Optional"></label>
+    <label>Poster size
+      <!-- value = height / width; empty = grow to fit the films -->
+      <select id="size">
+        <option value="">Fit to films</option>
+        <option value="1.4142">A4, A3, A2, … portrait</option>
+        <option value="0.7071">A4, A3, A2, … landscape</option>
+        <option value="1.2941">Letter (8.5×11 in) portrait</option>
+        <option value="0.7727">Letter (8.5×11 in) landscape</option>
+        <option value="1.5">2:3 portrait</option>
+        <option value="1.3333">3:4 portrait</option>
+        <option value="1.25">4:5 portrait</option>
+        <option value="1.5455">11×17 in</option>
+        <option value="1">Square</option>
+        <option value="0.5625">Desktop wallpaper (16:9)</option>
+        <option value="2.1667">Phone wallpaper (9:19.5)</option>
+      </select>
+    </label>
     <div class="row">
       <label>Columns <input id="cols" type="number" min="2" value="5" style="width:4.5em"></label>
       <label><input id="captions" type="checkbox" checked> Captions</label>
