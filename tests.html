@@ -18,8 +18,8 @@ Position,Name,Year,URL,Description
 const l = parseExport(list, Papa, 'fallback');
 eq(l.title, 'Best of, the decade', 'list title');
 eq(l.films, [
-  { name: 'Crouching Tiger, Hidden Dragon', year: '2000', uri: 'https://boxd.it/1', rating: 0 },
-  { name: 'The "Quoted" Film', year: '1999', uri: 'https://boxd.it/2', rating: 0 },
+  { name: 'Crouching Tiger, Hidden Dragon', year: '2000', uri: 'https://boxd.it/1', rating: 0, date: '' },
+  { name: 'The "Quoted" Film', year: '1999', uri: 'https://boxd.it/2', rating: 0, date: '' },
 ], 'list films');
 
 const ratings = `Date,Name,Year,Letterboxd URI,Rating
@@ -27,7 +27,7 @@ const ratings = `Date,Name,Year,Letterboxd URI,Rating
 `;
 const r = parseExport(ratings, Papa, 'Ratings');
 eq(r.title, 'Ratings', 'fallback title');
-eq(r.films, [{ name: 'Heat', year: '1995', uri: 'https://boxd.it/h', rating: 4.5 }], 'ratings');
+eq(r.films, [{ name: 'Heat', year: '1995', uri: 'https://boxd.it/h', rating: 4.5, date: '2024-03-01' }], 'ratings');
 
 eq(parseExport('garbage', Papa, 'x').films, [], 'no header');
 document.getElementById('out').textContent = 'PASS';

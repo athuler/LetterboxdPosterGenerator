@@ -9,8 +9,9 @@ const { TMDB_API_KEY = '' } = LOCAL ? await import('./config.local.js').catch(()
 const $ = id => document.getElementById(id);
 const canvas = $('poster'), ctx = canvas.getContext('2d');
 const IMG = 'https://image.tmdb.org/t/p/';
-// shortcut: hard cap keeps the canvas under Safari's ~16.7M pixel limit; raise with a smarter layout if needed.
-const MAX_FILMS = 100;
+// Browsers refuse canvases past these sizes (Safari: ~16.7M pixels; Chrome: 32767px per side),
+// so very long lists render at a lower resolution instead of failing.
+const MAX_AREA = 16e6, MAX_SIDE = 32000;
 
 let sources = [];   // [{ title, films }] from the dropped zip
 let films = [];     // the working list the poster is drawn from
@@ -135,9 +136,12 @@ function render() {
   const headH = title ? 150 : 0;
   const rows = Math.max(1, Math.ceil(films.length / cols));
 
-  canvas.width = W;
-  canvas.height = 2 * PAD + headH + rows * (tileH + capH) + (rows - 1) * GAP;
-  ctx.fillStyle = bg; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const H = 2 * PAD + headH + rows * (tileH + capH) + (rows - 1) * GAP;
+  const scale = Math.min(1, Math.sqrt(MAX_AREA / (W * H)), MAX_SIDE / H);
+  canvas.width = Math.floor(W * scale);
+  canvas.height = Math.floor(H * scale);
+  ctx.setTransform(scale, 0, 0, scale, 0, 0); // draw in poster units; the canvas size above already applied the scale
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
   ctx.fillStyle = fg; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
 
   if (title) {
@@ -167,46 +171,96 @@ function render() {
       ctx.globalAlpha = 1;
     }
   });
+
+  // Line the editing overlay up with the drawn posters, in % so it follows the canvas's CSS size.
+  const pct = (v, total) => (v / total * 100) + '%';
+  [...$('tiles').children].forEach((el, i) => {
+    el.style.left = pct(PAD + (i % cols) * (tileW + GAP), W);
+    el.style.top = pct(PAD + headH + Math.floor(i / cols) * (tileH + capH + GAP), H);
+    el.style.width = pct(tileW, W);
+    el.style.height = pct(tileH, H);
+  });
 }
 
-// ---------- Working list UI ----------
+// ---------- Sorting (only uses data already in the export: no extra requests) ----------
+// Each film carries `order` (position in the source list / when added) and `custom` (hand-arranged rank),
+// so "List order" and "Custom" can always be restored after trying other sorts.
+let seq = 0; // next order/custom value for films added by search
+
+// Missing values (no year, unrated, no date) always sort last.
+const missingLast = (get, dir) => (a, b) => {
+  const x = get(a), y = get(b);
+  return isNaN(x) - isNaN(y) || dir * (x - y) || 0;
+};
+const SORTS = {
+  list: (a, b) => a.order - b.order,
+  custom: (a, b) => a.custom - b.custom,
+  title: (a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true }),
+  'year-asc': missingLast(f => parseInt(f.year), 1),
+  'year-desc': missingLast(f => parseInt(f.year), -1),
+  rating: missingLast(f => f.rating || NaN, -1),
+  'date-desc': missingLast(f => Date.parse(f.date), -1),
+  'date-asc': missingLast(f => Date.parse(f.date), 1),
+  shuffle: (a, b) => a.rand - b.rand,
+};
+
+function applySort() {
+  const sel = $('sort');
+  // Offer rating/date sorts only when the current films have that data.
+  const has = { rating: films.some(f => f.rating), 'date-desc': films.some(f => f.date), 'date-asc': films.some(f => f.date) };
+  for (const [v, ok] of Object.entries(has)) sel.querySelector(`[value="${v}"]`).disabled = !ok;
+  if (sel.selectedOptions[0]?.disabled) sel.value = 'list';
+  for (const f of films) f.rand ??= Math.random();
+  const cmp = SORTS[sel.value];
+  films.sort((a, b) => cmp(a, b) || a.order - b.order);
+}
+
+// ---------- Editing on the preview: drag to reorder, ✕ / Delete to remove, arrow keys to move ----------
 function move(from, to) {
-  if (to < 0 || to >= films.length || from === to) return;
+  if (to < 0 || to >= films.length || from === to) return false;
   films.splice(to, 0, films.splice(from, 1)[0]);
+  films.forEach((f, i) => { f.custom = i; }); // a hand move makes the current order the custom one
+  $('sort').value = 'custom';
   update();
+  return true;
 }
+function remove(i) { films.splice(i, 1); update(); }
 
-function renderList() {
-  const btn = (label, aria, onclick) => {
-    const b = document.createElement('button');
-    b.type = 'button'; b.textContent = label; b.setAttribute('aria-label', aria); b.onclick = onclick;
-    return b;
-  };
-  $('films').replaceChildren(...films.map((f, i) => {
-    const li = document.createElement('li');
-    li.draggable = true;
-    const span = document.createElement('span');
-    span.textContent = `${i + 1}. ${f.name}${f.year ? ` (${f.year})` : ''}`;
-    li.append(span,
-      btn('↑', `Move ${f.name} up`, () => move(i, i - 1)),
-      btn('↓', `Move ${f.name} down`, () => move(i, i + 1)),
-      btn('✕', `Remove ${f.name}`, () => { films.splice(i, 1); update(); }));
-    li.ondragstart = e => { e.dataTransfer.setData('text/x-film', String(i)); li.classList.add('dragging'); };
-    li.ondragend = () => li.classList.remove('dragging');
-    li.ondragover = e => { if (e.dataTransfer.types.includes('text/x-film')) e.preventDefault(); };
-    li.ondrop = e => {
+function renderTiles() {
+  $('tiles').replaceChildren(...films.map((f, i) => {
+    const tile = document.createElement('div');
+    tile.className = 'tile';
+    tile.tabIndex = 0;
+    tile.draggable = true;
+    tile.title = `${f.name}${f.year ? ` (${f.year})` : ''}`;
+    tile.setAttribute('aria-label', `${i + 1}. ${tile.title}. Arrow keys move it, Delete removes it.`);
+    const x = document.createElement('button');
+    x.type = 'button'; x.textContent = '✕'; x.setAttribute('aria-label', `Remove ${f.name}`);
+    x.onclick = () => remove(i);
+    tile.append(x);
+    tile.onkeydown = e => {
+      const to = { ArrowLeft: i - 1, ArrowUp: i - 1, ArrowRight: i + 1, ArrowDown: i + 1 }[e.key];
+      if (to !== undefined) { e.preventDefault(); if (move(i, to)) $('tiles').children[to].focus(); }
+      else if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault(); remove(i);
+        $('tiles').children[Math.min(i, films.length - 1)]?.focus();
+      }
+    };
+    tile.ondragstart = e => { e.dataTransfer.setData('text/x-film', String(i)); tile.classList.add('dragging'); };
+    tile.ondragend = () => tile.classList.remove('dragging');
+    tile.ondragover = e => { if (e.dataTransfer.types.includes('text/x-film')) e.preventDefault(); };
+    tile.ondrop = e => {
       const from = e.dataTransfer.getData('text/x-film');
       if (from === '') return;
       e.preventDefault(); e.stopPropagation();
       move(Number(from), i);
     };
-    return li;
+    return tile;
   }));
-  $('count').textContent = `${films.length} / ${MAX_FILMS}`;
-  $('search').disabled = films.length >= MAX_FILMS;
+  $('count').textContent = String(films.length);
 }
 
-function update() { renderList(); resolvePosters(); scheduleRender(); }
+function update() { applySort(); renderTiles(); resolvePosters(); scheduleRender(); }
 
 // ---------- Zip import ----------
 const LABELS = { watchlist: 'Watchlist', watched: 'Watched', ratings: 'Ratings' };
@@ -238,10 +292,9 @@ async function loadZip(file) {
 
 function pickSource() {
   const s = sources[$('source').value];
-  const all = s ? s.films : [];
-  films = all.slice(0, MAX_FILMS).map(f => ({ ...f }));
+  films = (s ? s.films : []).map((f, i) => ({ ...f, order: i, custom: i }));
+  seq = films.length;
   $('title').value = s ? s.title : '';
-  if (all.length > MAX_FILMS) status(`Showing the first ${MAX_FILMS} of ${all.length} films.`);
   update();
 }
 
@@ -268,8 +321,8 @@ async function search(q) {
     if (m.poster_path) img.src = IMG + 'w92' + m.poster_path;
     b.append(img, `${m.title}${year ? ` (${year})` : ''}`);
     b.onclick = () => {
-      if (films.length >= MAX_FILMS) return;
-      films.push({ name: m.title, year, uri: 'tmdb:' + m.id, rating: 0, poster: m.poster_path ?? null });
+      films.push({ name: m.title, year, uri: 'tmdb:' + m.id, rating: 0, date: '',
+        poster: m.poster_path ?? null, order: seq, custom: seq++ });
       $('search').value = ''; box.replaceChildren();
       update();
     };
@@ -293,6 +346,10 @@ document.addEventListener('drop', e => {
 $('source').onchange = pickSource;
 for (const id of ['title', 'cols', 'captions', 'bg']) $(id).oninput = scheduleRender;
 $('clear').onclick = () => { films = []; update(); };
+$('sort').onchange = () => {
+  if ($('sort').value === 'shuffle') for (const f of films) f.rand = Math.random(); // re-pick to reshuffle
+  update();
+};
 $('search').oninput = e => {
   clearTimeout(searchTimer);
   const q = e.target.value.trim();

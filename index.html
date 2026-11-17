@@ -33,13 +33,18 @@
   #results { display: grid; gap: 4px; }
   #results button { display: flex; gap: 8px; align-items: center; text-align: left; }
   #results img { width: 30px; height: 45px; object-fit: cover; background: var(--line); }
-  #films { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; max-height: 50vh; overflow: auto; }
-  #films li { display: flex; gap: 6px; align-items: center; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; cursor: grab; }
-  #films li.dragging { opacity: .4; }
-  #films li span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #films li button { padding: 2px 7px; }
   .preview { display: grid; gap: 12px; position: sticky; top: 16px; }
-  canvas { width: 100%; height: auto; border-radius: 6px; box-shadow: 0 2px 12px rgba(0,0,0,.2); }
+  #stage { position: relative; }
+  canvas { display: block; width: 100%; height: auto; border-radius: 6px; box-shadow: 0 2px 12px rgba(0,0,0,.2); }
+  /* Invisible tiles laid over each drawn poster for editing. */
+  .tile { position: absolute; cursor: grab; border-radius: 3px; outline-offset: 2px; }
+  .tile:hover, .tile:focus-visible { outline: 3px solid var(--accent); }
+  .tile.dragging { opacity: .4; background: var(--bg); }
+  .tile button { position: absolute; top: 4px; right: 4px; padding: 0 6px; line-height: 1.6;
+    background: rgba(0,0,0,.75); color: #fff; border: 0; border-radius: 50%; opacity: 0; }
+  .tile:hover button, .tile:focus-within button { opacity: 1; }
+  @media (hover: none) { .tile button { opacity: .85; } }
+  .hint { color: var(--muted); font-size: 13px; margin: 0; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -69,13 +74,29 @@
     <label>Add a film <input id="search" type="search" placeholder="Search TMDB…" autocomplete="off"></label>
     <div id="results"></div>
 
+    <label>Sort
+      <select id="sort">
+        <option value="list">List order</option>
+        <option value="custom">Custom (drag to arrange)</option>
+        <option value="title">Title A–Z</option>
+        <option value="year-asc">Year: oldest first</option>
+        <option value="year-desc">Year: newest first</option>
+        <option value="rating">Rating: highest first</option>
+        <option value="date-desc">Date logged: newest first</option>
+        <option value="date-asc">Date logged: oldest first</option>
+        <option value="shuffle">Shuffle</option>
+      </select>
+    </label>
     <div class="row"><b>Films</b> <span id="count"></span>
       <button id="clear" type="button">Clear</button></div>
-    <ol id="films"></ol>
   </section>
 
   <section class="preview">
-    <canvas id="poster" aria-label="Poster preview"></canvas>
+    <div id="stage">
+      <canvas id="poster" aria-label="Poster preview"></canvas>
+      <div id="tiles"></div>
+    </div>
+    <p class="hint">Drag posters to reorder. Hover or tap one for ✕ to remove it. Keyboard: Tab to a poster, then arrow keys or Delete.</p>
     <button id="download" class="primary" type="button">Download PNG</button>
   </section>
 </main>

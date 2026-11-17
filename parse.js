@@ -9,7 +9,7 @@ export function parseExport(text, Papa, fallbackTitle = '') {
   const h = rows.findIndex(r => r.includes('Name') && r.includes('Year'));
   if (h < 0) return { title, films: [] };
   const col = name => rows[h].indexOf(name);
-  const n = col('Name'), y = col('Year'), r = col('Rating');
+  const n = col('Name'), y = col('Year'), r = col('Rating'), d = col('Date');
   const u = Math.max(col('Letterboxd URI'), col('URL'));
 
   const films = rows.slice(h + 1).filter(row => row[n]).map(row => ({
@@ -17,6 +17,7 @@ export function parseExport(text, Papa, fallbackTitle = '') {
     year: row[y] || '',
     uri: u >= 0 ? row[u] || '' : '',
     rating: r >= 0 ? Number(row[r]) || 0 : 0,
+    date: d >= 0 ? row[d] || '' : '', // watched/rated/added date; list rows have none
   }));
   return { title, films };
 }

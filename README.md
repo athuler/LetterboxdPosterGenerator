@@ -7,10 +7,11 @@ Turn your Letterboxd lists into a poster: a grid of film posters with an optiona
 1. Export your data at <https://letterboxd.com/data/export/>.
 2. Drop the `.zip` on the page. It is read entirely in your browser, nothing is uploaded.
 3. Pick a source (any of your lists, Watchlist, Watched or Ratings), or start empty.
-4. Add films by searching TMDB (only TMDB results can be added), drag or use ↑ ↓ ✕ to reorder and remove, tweak the title, columns, captions and background.
-5. Click **Download PNG**.
+4. Add films by searching TMDB (only TMDB results can be added), drag posters on the preview to reorder them, use ✕ (or Tab + arrow keys / Delete) to move and remove them, tweak the title, columns, captions and background.
+5. Sort by list order, title, year, rating or date logged (the last two only when the source has them), or shuffle. Dragging a poster switches to **Custom**, which keeps your hand-made order while you try other sorts.
+6. Click **Download PNG**.
 
-Posters are capped at 100 films.
+There's no film limit. Very long lists are exported at a lower resolution, so the image stays within browser canvas limits.
 
 ## How the TMDB key stays secret
 
