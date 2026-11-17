@@ -1,6 +1,11 @@
 import { TMDB_PROXY_URL } from './config.js';
 import { parseExport } from './parse.js';
 
+// Optional, gitignored config.local.js: lets a local clone call TMDB directly with its own key, no Worker.
+// Only tried on localhost so the deployed site doesn't request a file that never exists there.
+const LOCAL = ['localhost', '127.0.0.1'].includes(location.hostname);
+const { TMDB_API_KEY = '' } = LOCAL ? await import('./config.local.js').catch(() => ({})) : {};
+
 const $ = id => document.getElementById(id);
 const canvas = $('poster'), ctx = canvas.getContext('2d');
 const IMG = 'https://image.tmdb.org/t/p/';
@@ -12,12 +17,18 @@ let films = [];     // the working list the poster is drawn from
 
 const status = msg => { $('status').textContent = msg; };
 
-// ---------- TMDB (via the Worker proxy, which holds the key) ----------
+// ---------- TMDB: via the Worker proxy (holds the key), or directly with a local key ----------
 async function tmdb(params) {
-  const url = new URL(TMDB_PROXY_URL + '/search');
+  const url = new URL(TMDB_API_KEY ? 'https://api.themoviedb.org/3/search/movie' : TMDB_PROXY_URL + '/search');
   for (const [k, v] of Object.entries(params)) if (v) url.searchParams.set(k, v);
-  const res = await fetch(url);
-  if (!res.ok) throw new Error('TMDB proxy ' + res.status);
+  const init = {};
+  if (TMDB_API_KEY) {
+    // v4 read-access tokens are long JWTs sent as a header; short v3 keys go in the query.
+    if (TMDB_API_KEY.length > 40) init.headers = { Authorization: 'Bearer ' + TMDB_API_KEY };
+    else url.searchParams.set('api_key', TMDB_API_KEY);
+  }
+  const res = await fetch(url, init);
+  if (!res.ok) throw new Error('TMDB ' + res.status);
   return res.json();
 }
 
@@ -301,4 +312,5 @@ $('download').onclick = () => {
   }
 };
 
+if (LOCAL && !TMDB_API_KEY) status('Local dev: add your TMDB key in config.local.js (see README), or run the Worker on :8787.');
 update();

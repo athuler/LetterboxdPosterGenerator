@@ -18,7 +18,26 @@ The site never sees the TMDB key. It calls a small Cloudflare Worker ([worker/wo
 
 ## Local development
 
-No build step. Two terminals:
+No build step, no Node needed.
+
+1. Get a free TMDB API key at <https://www.themoviedb.org/settings/api>.
+2. Create `config.local.js` in the repo root (gitignored, never deployed):
+
+   ```js
+   export const TMDB_API_KEY = "your-tmdb-v3-key-or-v4-token";
+   ```
+
+3. Serve the folder and open <http://localhost:8765>:
+
+   ```bash
+   python3 -m http.server 8765
+   ```
+
+On `localhost`, a key in `config.local.js` makes the app call TMDB directly, skipping the Worker. Parser self-check: <http://localhost:8765/tests.html> should show `PASS`.
+
+### Testing the Worker locally (optional)
+
+Only needed when changing `worker/`. Remove `config.local.js` (or leave its key empty), then run the Worker and the site in two terminals:
 
 1. Worker: create `worker/.dev.vars` (gitignored):
 
@@ -39,7 +58,7 @@ No build step. Two terminals:
    python3 -m http.server 8765
    ```
 
-Open <http://localhost:8765>. On `localhost`, `config.js` points at the local Worker. Parser self-check: <http://localhost:8765/tests.html> should show `PASS`.
+Without a local key, `config.js` points `localhost` at the local Worker on port 8787.
 
 ## Deploy
 

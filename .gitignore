@@ -1,4 +1,7 @@
-# Local Worker secrets (TMDB key) and wrangler state.
+# Local TMDB keys: never commit.
+config.local.js
 worker/.dev.vars
+
+# Wrangler state and deps.
 .wrangler/
 node_modules/
