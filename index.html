@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Letterboxd Poster Generator</title>
+<style>
+  :root { --bg: #f6f6f4; --panel: #fff; --fg: #1b1b1b; --muted: #666; --line: #ddd; --accent: #00a35c; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #14181c; --panel: #1f252b; --fg: #e8e8e8; --muted: #9aa3ab; --line: #333b43; --accent: #00c76e; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.4 system-ui, sans-serif; background: var(--bg); color: var(--fg); }
+  a { color: var(--accent); }
+  header, footer { padding: 16px; }
+  header h1 { margin: 0; font-size: 22px; }
+  footer { color: var(--muted); font-size: 13px; }
+  main { display: grid; grid-template-columns: minmax(280px, 380px) 1fr; gap: 16px; padding: 0 16px; align-items: start; }
+  @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+  .controls { display: grid; gap: 12px; }
+  label { display: grid; gap: 4px; }
+  input, select, button { font: inherit; color: inherit; }
+  input[type=text], input[type=search], input[type=number], input[type=color], select { padding: 7px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .row label { display: flex; gap: 6px; align-items: center; }
+  button { cursor: pointer; border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 6px 10px; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  button:disabled, input:disabled { opacity: .5; cursor: not-allowed; }
+  #drop { display: block; border: 2px dashed var(--line); border-radius: 10px; padding: 18px; text-align: center; cursor: pointer; }
+  #drop.over, body.over #drop { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+  #status { color: var(--muted); min-height: 1.4em; margin: 0; }
+  #results { display: grid; gap: 4px; }
+  #results button { display: flex; gap: 8px; align-items: center; text-align: left; }
+  #results img { width: 30px; height: 45px; object-fit: cover; background: var(--line); }
+  #films { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; max-height: 50vh; overflow: auto; }
+  #films li { display: flex; gap: 6px; align-items: center; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; cursor: grab; }
+  #films li.dragging { opacity: .4; }
+  #films li span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #films li button { padding: 2px 7px; }
+  .preview { display: grid; gap: 12px; position: sticky; top: 16px; }
+  canvas { width: 100%; height: auto; border-radius: 6px; box-shadow: 0 2px 12px rgba(0,0,0,.2); }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script type="module" src="app.js"></script>
+</head>
+<body>
+<header><h1>Letterboxd Poster Generator</h1></header>
+<main>
+  <section class="controls">
+    <label id="drop" for="file">
+      Drop your Letterboxd export <b>.zip</b> here, or click to choose it.
+      <small>Get it at <a href="https://letterboxd.com/data/export/" target="_blank" rel="noopener">letterboxd.com/data/export</a>. It never leaves your browser.</small>
+    </label>
+    <input id="file" type="file" accept=".zip,application/zip" hidden>
+    <p id="status" role="status"></p>
+
+    <label>Source
+      <select id="source"><option value="">Start empty</option></select>
+    </label>
+    <label>Poster title <input id="title" type="text" placeholder="Optional"></label>
+    <div class="row">
+      <label>Columns <input id="cols" type="number" min="2" max="15" value="5" style="width:4.5em"></label>
+      <label><input id="captions" type="checkbox" checked> Captions</label>
+      <label>Background <input id="bg" type="color" value="#14181c"></label>
+    </div>
+
+    <label>Add a film <input id="search" type="search" placeholder="Search TMDB…" autocomplete="off"></label>
+    <div id="results"></div>
+
+    <div class="row"><b>Films</b> <span id="count"></span>
+      <button id="clear" type="button">Clear</button></div>
+    <ol id="films"></ol>
+  </section>
+
+  <section class="preview">
+    <canvas id="poster" aria-label="Poster preview"></canvas>
+    <button id="download" class="primary" type="button">Download PNG</button>
+  </section>
+</main>
+<footer>
+  This product uses the TMDB API but is not endorsed or certified by TMDB. Not affiliated with Letterboxd.
+</footer>
+</body>
+</html>
