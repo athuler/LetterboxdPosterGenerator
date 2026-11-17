@@ -48,6 +48,11 @@
   .tile:hover button, .tile:focus-within button { opacity: 1; }
   @media (hover: none) { .tile button { opacity: .85; } }
   .hint { color: var(--muted); font-size: 13px; margin: 0; }
+  .stepper { display: flex; align-items: center; gap: 4px; }
+  .stepper button { width: 2em; padding: 4px 0; font-weight: 600; }
+  /* The −/+ buttons replace the browser's tiny spinner arrows. */
+  #cols { width: 3.5em; text-align: center; -moz-appearance: textfield; appearance: textfield; }
+  #cols::-webkit-inner-spin-button, #cols::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
   [hidden] { display: none !important; } /* #drop etc. set display, which would otherwise beat the hidden attribute */
   #picker { display: grid; gap: 12px; }
   #loaded { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; }
@@ -108,7 +113,11 @@
       </select>
     </label>
     <div class="row">
-      <label>Columns <input id="cols" type="number" min="2" value="5" style="width:4.5em"></label>
+      <span class="stepper">Columns
+        <button id="cols-dec" type="button" aria-label="Fewer columns">−</button>
+        <input id="cols" type="number" min="1" value="5" aria-label="Columns">
+        <button id="cols-inc" type="button" aria-label="More columns">+</button>
+      </span>
       <label><input id="captions" type="checkbox" checked> Captions</label>
       <label>Background <input id="bg" type="color" value="#14181c"></label>
     </div>

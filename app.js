@@ -141,7 +141,7 @@ function textTile(f, x, y, w, h, fg) {
 }
 
 function render() {
-  const cols = Math.max(2, Math.floor(Number($('cols').value)) || 5);
+  const cols = Math.max(1, Math.floor(Number($('cols').value)) || 5);
   const title = $('title').value.trim();
   const captions = $('captions').checked;
   const bg = $('bg').value, fg = contrast(bg);
@@ -502,6 +502,12 @@ $('source').onchange = pickSource;
 for (const id of ['title', 'size', 'cols', 'captions', 'bg']) $(id).oninput = () => { scheduleRender(); saveState(); };
 $('clear').onclick = () => { films = []; update(); };
 $('unload').onclick = unloadZip;
+const stepCols = d => {
+  $('cols').value = Math.max(1, (Math.floor(Number($('cols').value)) || 5) + d);
+  $('cols').dispatchEvent(new Event('input')); // same path as typing: re-render + save
+};
+$('cols-dec').onclick = () => stepCols(-1);
+$('cols-inc').onclick = () => stepCols(1);
 $('sort').onchange = () => {
   if ($('sort').value === 'shuffle') for (const f of films) f.rand = Math.random(); // re-pick to reshuffle
   update();
