@@ -337,9 +337,29 @@ async function renderRecent() {
 }
 
 // A newly chosen file: keep it in the recent list, then load it.
+// A newly chosen file: load it, and only keep it in the recent list if it was a readable export.
 async function openZip(file) {
+  if (!(await loadZip(file))) return;
   await rememberZip(file);
-  loadZip(file);
+  saveState();
+}
+
+// While an export is loaded, its name + ✕ replace the drop zone and recent uploads.
+function showLoaded(name) {
+  $('picker').hidden = !!name;
+  $('loaded').hidden = !name;
+  $('loaded-name').textContent = name || '';
+  $('lists-label').textContent = name ? `Lists (${sources.length})` : 'Lists';
+}
+
+function unloadZip() {
+  sources = [];
+  currentZipId = null;
+  $('source').replaceChildren(new Option('Start empty', ''));
+  $('file').value = ''; // so choosing the same file again still fires "change"
+  showLoaded(null);
+  renderRecent();
+  saveState();
 }
 
 async function restore() {
@@ -365,6 +385,7 @@ async function restore() {
 const LABELS = { watchlist: 'Watchlist', watched: 'Watched', ratings: 'Ratings' };
 
 // restoreSource: when restoring after a reload, select this source but keep the saved film list.
+// Returns true when the file was a readable Letterboxd export.
 async function loadZip(file, restoreSource) {
   if (restoreSource === undefined) status(`Reading ${file.name}…`);
   try {
@@ -378,19 +399,22 @@ async function loadZip(file, restoreSource) {
       const parsed = parseExport(await e.async('string'), Papa, LABELS[base] || base.replace(/-/g, ' '));
       if (parsed.films.length) found.push({ ...parsed, order: isList ? 1 : 0 });
     }
-    if (!found.length) return status('No Letterboxd lists found in that zip.');
+    if (!found.length) { status('No Letterboxd lists found in that zip.'); return false; }
     sources = found.sort((a, b) => a.order - b.order || a.title.localeCompare(b.title));
     $('source').replaceChildren(new Option('Start empty', ''),
       ...sources.map((s, i) => new Option(`${s.title} (${s.films.length})`, String(i))));
+    status('');
+    showLoaded(file.name);
     if (restoreSource !== undefined) {
-      $('source').value = restoreSource; // silent: the restored poster speaks for itself
+      $('source').value = restoreSource; // keep the restored films
     } else {
       $('source').value = '0';
       pickSource();
-      status(`Loaded ${sources.length} lists.`);
     }
+    return true;
   } catch (err) {
-    status(`Couldn't read that file: ${err.message}`);
+    status(`Couldn't read ${file.name}. Is it the .zip from Letterboxd's data export?`);
+    return false;
   }
 }
 
@@ -450,6 +474,7 @@ document.addEventListener('drop', e => {
 $('source').onchange = pickSource;
 for (const id of ['title', 'cols', 'captions', 'bg']) $(id).oninput = () => { scheduleRender(); saveState(); };
 $('clear').onclick = () => { films = []; update(); };
+$('unload').onclick = unloadZip;
 $('sort').onchange = () => {
   if ($('sort').value === 'shuffle') for (const f of films) f.rand = Math.random(); // re-pick to reshuffle
   update();
