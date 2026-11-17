@@ -26,7 +26,7 @@
   input, select, button { font: inherit; color: inherit; }
   input[type=text], input[type=search], input[type=number], input[type=color], select { padding: 7px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); }
   .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-  .row label { display: flex; gap: 6px; align-items: center; }
+  .row label, label.check { display: flex; gap: 6px; align-items: center; }
   button { cursor: pointer; border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 6px 10px; }
   button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
   button:disabled, input:disabled { opacity: .5; cursor: not-allowed; }
@@ -138,8 +138,13 @@
         <input id="cols" type="number" min="1" value="5" aria-label="Columns">
         <button id="cols-inc" type="button" aria-label="More columns">+</button>
       </span>
-      <label><input id="captions" type="checkbox" checked> Captions</label>
+      <button id="cols-auto" type="button" title="Set the number of columns that fits the poster best">Auto</button>
       <label>Background <input id="bg" type="color" value="#14181c"></label>
+    </div>
+    <div class="row" role="group" aria-label="Captions">Captions
+      <label><input id="cap-title" type="checkbox" checked> Title</label>
+      <label><input id="cap-year" type="checkbox" checked> Year</label>
+      <label><input id="cap-rating" type="checkbox" checked> Rating</label>
     </div>
 
     <label>Add a film <input id="search" type="search" placeholder="Search TMDB…" autocomplete="off"></label>
@@ -158,6 +163,7 @@
         <option value="shuffle">Shuffle</option>
       </select>
     </label>
+    <label class="check"><input id="hide-missing" type="checkbox"> Hide films without posters<span id="missing-count"></span></label>
     <div class="row"><button id="clear" type="button">Clear</button></div>
   </section>
 

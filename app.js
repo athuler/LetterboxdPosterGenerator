@@ -76,7 +76,11 @@ function resolvePosters() {
   for (const f of films) {
     if (f.poster !== undefined) continue;
     f.poster = stored(keyOf(f));
-    if (f.poster === undefined) lookupPoster(f).then(p => { f.poster = p; scheduleRender(); });
+    if (f.poster === undefined) lookupPoster(f).then(p => {
+      f.poster = p;
+      if (p === null) renderTiles(); // the "no poster" count changes, and the film may now be hidden
+      scheduleRender();
+    });
   }
 }
 
@@ -140,33 +144,64 @@ function textTile(c, f, x, y, w, h, fg) {
   c.restore();
 }
 
+// The films that actually go on the poster: "no poster" means TMDB had no match (null), not still loading.
+const shown = () => $('hide-missing').checked ? films.filter(f => f.poster !== null) : films;
+
 // Where everything goes, in poster units (the poster is always W wide; H depends on the size setting).
-function layout() {
-  const cols = Math.max(1, Math.floor(Number($('cols').value)) || 5);
+// colsArg overrides the Columns field (used to try counts for Auto).
+function layout(colsArg) {
+  const list = shown(), n = list.length;
   const title = $('title').value.trim();
-  const captions = $('captions').checked;
+  const cap = { title: $('cap-title').checked, year: $('cap-year').checked, rating: $('cap-rating').checked };
+  const line2 = cap.year || cap.rating; // year and rating share the second caption line
+  const lines = cap.title + line2;
   const bg = $('bg').value, fg = contrast(bg);
   const ratio = Number($('size').value) || 0; // page height / width; 0 = grow to fit the films
   const headH = title ? 150 : 0;
-  const rows = Math.max(1, Math.ceil(films.length / cols));
-  const capFor = tw => captions ? Math.max(11, Math.min(26, tw / 10)) * 2.8 : 0;
-  const gridH = tw => rows * (tw * 1.5 + capFor(tw)) + (rows - 1) * tw * GAP_RATIO;
+  const capSizeFor = tw => Math.max(11, Math.min(26, tw / 10));
+  const capFor = tw => lines ? capSizeFor(tw) * (0.4 + 1.2 * lines) : 0;
 
-  // Tiles fill the width; on a fixed-size page they shrink until the grid also fits the height.
-  // (Captions have a minimum size, so one proportional step can undershoot: repeat a few times.)
-  let tileW = (W - 2 * PAD) / (cols + (cols - 1) * GAP_RATIO);
-  const H = ratio ? W * ratio : 2 * PAD + headH + gridH(tileW);
-  const availH = H - 2 * PAD - headH;
-  for (let k = 0; k < 5 && gridH(tileW) > availH; k++) tileW *= availH / gridH(tileW);
+  function grid(cols) {
+    const rows = Math.max(1, Math.ceil(n / cols));
+    const gridH = tw => rows * (tw * 1.5 + capFor(tw)) + (rows - 1) * tw * GAP_RATIO;
+    // Tiles fill the width; on a fixed-size page they shrink until the grid also fits the height.
+    // (Captions have a minimum size, so one proportional step can undershoot: repeat a few times.)
+    let tileW = (W - 2 * PAD) / (cols + (cols - 1) * GAP_RATIO);
+    const H = ratio ? W * ratio : 2 * PAD + headH + gridH(tileW);
+    const availH = H - 2 * PAD - headH;
+    for (let k = 0; k < 5 && gridH(tileW) > availH; k++) tileW *= availH / gridH(tileW);
+    return { cols, tileW, H, availH, gridH: gridH(tileW) };
+  }
+
+  const g = grid(colsArg ?? Math.max(1, Math.floor(Number($('cols').value)) || 5));
+  const { cols, tileW, H, availH } = g;
 
   const gap = tileW * GAP_RATIO, tileH = tileW * 1.5;
-  const capSize = Math.max(11, Math.min(26, tileW / 10));
+  const capSize = capSizeFor(tileW);
   const capH = capFor(tileW);
   // Centre the grid in whatever space is left over.
   const x0 = (W - (cols * tileW + (cols - 1) * gap)) / 2;
-  const y0 = PAD + headH + Math.max(0, availH - gridH(tileW)) / 2;
+  const y0 = PAD + headH + Math.max(0, availH - g.gridH) / 2;
   const at = i => [x0 + (i % cols) * (tileW + gap), y0 + Math.floor(i / cols) * (tileH + capH + gap)];
-  return { cols, title, captions, bg, fg, ratio, headH, H, availH, tileW, tileH, capSize, at };
+  // The smallest text on the poster, in poster units (0 = none): drives the download recommendations.
+  const minText = !n ? 0 : line2 ? capSize * 0.9 : cap.title ? capSize : 0;
+  return { list, cols, title, cap, line2, bg, fg, ratio, headH, H, availH, tileW, tileH, capSize, minText, at };
+}
+
+// The best column count: on a fixed page, the one that makes the posters biggest;
+// on "Fit to films", the one closest to an A-series portrait shape.
+function bestCols() {
+  const off = L => Math.abs(L.H / W - Math.SQRT2);
+  let best;
+  for (let c = 1; c <= Math.max(1, Math.min(shown().length, 60)); c++) {
+    const L = layout(c);
+    if (!best || (L.ratio ? L.tileW > best.tileW * 1.0001 : off(L) < off(best))) best = L;
+  }
+  return best.cols;
+}
+function autoCols() {
+  $('cols').value = bestCols();
+  $('cols').dispatchEvent(new Event('input')); // re-render + save
 }
 
 // Draw the poster onto context c at `scale` output pixels per poster unit.
@@ -178,25 +213,30 @@ function draw(c, L, scale) {
     c.font = 'bold 76px system-ui, sans-serif';
     c.fillText(fit(c, L.title, W - 2 * PAD), W / 2, PAD);
   }
-  if (!films.length) {
+  if (!L.list.length) {
     c.font = '36px system-ui, sans-serif'; c.globalAlpha = 0.6;
-    c.fillText('Drop your Letterboxd export or add films', W / 2, PAD + L.headH + L.availH / 2 - 18);
+    c.fillText(films.length ? 'No films with posters' : 'Drop your Letterboxd export or add films',
+      W / 2, PAD + L.headH + L.availH / 2 - 18);
     c.globalAlpha = 1;
   }
-  const { tileW, tileH, capSize } = L;
-  films.forEach((f, i) => {
+  const { tileW, tileH, capSize, cap } = L;
+  L.list.forEach((f, i) => {
     const [x, y] = L.at(i);
     const img = f.poster && posterImage(f.poster, tileW * scale);
     if (ready(img)) c.drawImage(img, x, y, tileW, tileH);
     else textTile(c, f, x, y, tileW, tileH, L.fg);
-    if (L.captions) {
-      c.fillStyle = L.fg; c.textAlign = 'center'; c.textBaseline = 'top';
+    c.fillStyle = L.fg; c.textAlign = 'center'; c.textBaseline = 'top';
+    let ty = y + tileH + capSize * 0.4;
+    if (cap.title) {
       c.font = `600 ${capSize}px system-ui, sans-serif`;
-      c.fillText(fit(c, f.name, tileW), x + tileW / 2, y + tileH + capSize * 0.4);
+      c.fillText(fit(c, f.name, tileW), x + tileW / 2, ty);
+      ty += capSize * 1.2;
+    }
+    if (L.line2) {
       c.font = `${capSize * 0.9}px system-ui, sans-serif`;
       c.globalAlpha = 0.7;
-      c.fillText(fit(c, [f.year, f.rating ? stars(f.rating) : ''].filter(Boolean).join('  '), tileW),
-        x + tileW / 2, y + tileH + capSize * 1.6);
+      c.fillText(fit(c, [cap.year && f.year, cap.rating && f.rating ? stars(f.rating) : ''].filter(Boolean).join('  '), tileW),
+        x + tileW / 2, ty);
       c.globalAlpha = 1;
     }
   });
@@ -255,18 +295,23 @@ function applySort() {
 }
 
 // ---------- Editing on the preview: drag to reorder, ✕ / Delete to remove, arrow keys to move ----------
-function move(from, to) {
-  if (to < 0 || to >= films.length || from === to) return false;
-  films.splice(to, 0, films.splice(from, 1)[0]);
+// Tiles only cover the shown films, so moves and removals go by film, not by tile position.
+function move(f, target) {
+  if (!target || f === target) return false;
+  const to = films.indexOf(target);
+  films.splice(to, 0, films.splice(films.indexOf(f), 1)[0]);
   films.forEach((f, i) => { f.custom = i; }); // a hand move makes the current order the custom one
   $('sort').value = 'custom';
   update();
   return true;
 }
-function remove(i) { films.splice(i, 1); update(); }
+function remove(f) { films.splice(films.indexOf(f), 1); update(); }
 
 function renderTiles() {
-  $('tiles').replaceChildren(...films.map((f, i) => {
+  const list = shown();
+  const missing = films.filter(f => f.poster === null).length;
+  $('missing-count').textContent = missing ? ` (${missing})` : '';
+  $('tiles').replaceChildren(...list.map((f, i) => {
     const tile = document.createElement('div');
     tile.className = 'tile';
     tile.tabIndex = 0;
@@ -275,14 +320,15 @@ function renderTiles() {
     tile.setAttribute('aria-label', `${i + 1}. ${tile.title}. Arrow keys move it, Delete removes it.`);
     const x = document.createElement('button');
     x.type = 'button'; x.textContent = '✕'; x.setAttribute('aria-label', `Remove ${f.name}`);
-    x.onclick = () => remove(i);
+    x.onclick = () => remove(f);
     tile.append(x);
     tile.onkeydown = e => {
       const to = { ArrowLeft: i - 1, ArrowUp: i - 1, ArrowRight: i + 1, ArrowDown: i + 1 }[e.key];
-      if (to !== undefined) { e.preventDefault(); if (move(i, to)) $('tiles').children[to].focus(); }
+      if (to !== undefined) { e.preventDefault(); if (move(f, list[to])) $('tiles').children[to].focus(); }
       else if (e.key === 'Delete' || e.key === 'Backspace') {
-        e.preventDefault(); remove(i);
-        $('tiles').children[Math.min(i, films.length - 1)]?.focus();
+        e.preventDefault(); remove(f);
+        const kids = $('tiles').children;
+        kids[Math.min(i, kids.length - 1)]?.focus();
       }
     };
     tile.ondragstart = e => { e.dataTransfer.setData('text/x-film', String(i)); tile.classList.add('dragging'); };
@@ -292,7 +338,7 @@ function renderTiles() {
       const from = e.dataTransfer.getData('text/x-film');
       if (from === '') return;
       e.preventDefault(); e.stopPropagation();
-      move(Number(from), i);
+      move(list[Number(from)], f);
     };
     return tile;
   }));
@@ -303,6 +349,7 @@ function update() { applySort(); renderTiles(); resolvePosters(); scheduleRender
 // ---------- Persistence: settings + film list in localStorage, recent zips in IndexedDB ----------
 // Everything stays in this browser. Storage can be blocked (private windows), so every access is guarded.
 const SETTINGS = ['title', 'size', 'cols', 'bg', 'sort'];
+const CHECKS = ['cap-title', 'cap-year', 'cap-rating', 'hide-missing'];
 const MAX_RECENT = 3;
 let currentZipId = null;
 let saveTimer;
@@ -310,8 +357,9 @@ let saveTimer;
 function saveState() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
-    const state = { zipId: currentZipId, source: $('source').value, captions: $('captions').checked, films };
+    const state = { zipId: currentZipId, source: $('source').value, films };
     for (const id of SETTINGS) state[id] = $(id).value;
+    state.checks = Object.fromEntries(CHECKS.map(id => [id, $(id).checked]));
     try { localStorage.setItem('state', JSON.stringify(state)); } catch {}
   }, 300);
 }
@@ -404,7 +452,11 @@ async function restore() {
   try { state = JSON.parse(localStorage.getItem('state')); } catch {}
   if (state) {
     for (const id of SETTINGS) if (state[id] != null) $(id).value = state[id];
-    $('captions').checked = state.captions ?? true;
+    if (state.checks) {
+      for (const id of CHECKS) if (typeof state.checks[id] === 'boolean') $(id).checked = state.checks[id];
+    } else { // saved before these options existed: keep caption on/off
+      if (state.captions === false) for (const id of ['cap-title', 'cap-year', 'cap-rating']) $(id).checked = false;
+    }
     films = Array.isArray(state.films) ? state.films : [];
     seq = films.reduce((m, f) => Math.max(m, f.order + 1, f.custom + 1), 0);
     currentZipId = state.zipId ?? null; // set before update() so its save keeps the link
@@ -509,7 +561,12 @@ document.addEventListener('drop', e => {
   openZip(e.dataTransfer.files[0]);
 });
 $('source').onchange = pickSource;
-for (const id of ['title', 'size', 'cols', 'captions', 'bg']) $(id).oninput = () => { scheduleRender(); saveState(); };
+for (const id of ['title', 'size', 'cols', 'bg', 'cap-title', 'cap-year', 'cap-rating']) {
+  $(id).addEventListener('input', () => { scheduleRender(); saveState(); });
+}
+$('size').addEventListener('change', autoCols); // a new page shape gets the best column count
+$('cols-auto').onclick = autoCols;
+$('hide-missing').onchange = update;
 $('clear').onclick = () => { films = []; update(); };
 $('unload').onclick = unloadZip;
 const stepCols = d => {
@@ -570,7 +627,7 @@ function canvasMaxArea() {
 function sizeOptions(fmt) {
   const L = layout(), key = $('size').value;
   const maxW = Math.floor(Math.min(Math.sqrt(canvasMaxArea() * W / L.H), MAX_SIDE, MAX_SIDE * W / L.H));
-  const text = L.captions && films.length ? L.capSize * 0.9 : 0; // smallest text, in poster units
+  const text = L.minText; // smallest text, in poster units
   let opts, rec;
   if (fmt === 'png') {
     const presets = WALLPAPERS[key] || [1, 2, 3, 4, 6].map(k => ['', k * W]);
@@ -656,7 +713,7 @@ async function exportCanvas(pxW) {
   const L = layout(), s = pxW / W;
   const [want] = IMG_SIZES.find(([, w]) => w >= L.tileW * s) || IMG_SIZES.at(-1);
   await Promise.race([
-    Promise.all(films.filter(f => f.poster).map(f => loaded(image(f.poster, want)))),
+    Promise.all(L.list.filter(f => f.poster).map(f => loaded(image(f.poster, want)))),
     new Promise(r => setTimeout(r, 20000)), // don't hang on a slow image; it falls back to smaller art
   ]);
   const c = document.createElement('canvas');
