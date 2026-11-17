@@ -93,7 +93,8 @@ function image(path) {
 }
 
 // ---------- Rendering ----------
-const W = 1500, PAD = 70, GAP = 20;
+// The gap scales with the poster width so any number of columns fits the fixed poster width.
+const W = 1500, PAD = 70, GAP_RATIO = 0.08;
 let frame = 0;
 function scheduleRender() { if (!frame) frame = requestAnimationFrame(() => { frame = 0; render(); }); }
 
@@ -126,17 +127,17 @@ function textTile(f, x, y, w, h, fg) {
 }
 
 function render() {
-  const cols = Math.min(15, Math.max(2, Number($('cols').value) || 5));
+  const cols = Math.max(2, Math.floor(Number($('cols').value)) || 5);
   const title = $('title').value.trim();
   const captions = $('captions').checked;
   const bg = $('bg').value, fg = contrast(bg);
-  const tileW = (W - 2 * PAD - (cols - 1) * GAP) / cols, tileH = tileW * 1.5;
+  const tileW = (W - 2 * PAD) / (cols + (cols - 1) * GAP_RATIO), gap = tileW * GAP_RATIO, tileH = tileW * 1.5;
   const capSize = Math.max(11, Math.min(26, tileW / 10));
   const capH = captions ? capSize * 2.8 : 0;
   const headH = title ? 150 : 0;
   const rows = Math.max(1, Math.ceil(films.length / cols));
 
-  const H = 2 * PAD + headH + rows * (tileH + capH) + (rows - 1) * GAP;
+  const H = 2 * PAD + headH + rows * (tileH + capH) + (rows - 1) * gap;
   const scale = Math.min(1, Math.sqrt(MAX_AREA / (W * H)), MAX_SIDE / H);
   canvas.width = Math.floor(W * scale);
   canvas.height = Math.floor(H * scale);
@@ -155,8 +156,8 @@ function render() {
   }
 
   films.forEach((f, i) => {
-    const x = PAD + (i % cols) * (tileW + GAP);
-    const y = PAD + headH + Math.floor(i / cols) * (tileH + capH + GAP);
+    const x = PAD + (i % cols) * (tileW + gap);
+    const y = PAD + headH + Math.floor(i / cols) * (tileH + capH + gap);
     const img = f.poster && image(f.poster);
     if (img && img.complete && img.naturalWidth) ctx.drawImage(img, x, y, tileW, tileH);
     else textTile(f, x, y, tileW, tileH, fg);
@@ -175,8 +176,8 @@ function render() {
   // Line the editing overlay up with the drawn posters, in % so it follows the canvas's CSS size.
   const pct = (v, total) => (v / total * 100) + '%';
   [...$('tiles').children].forEach((el, i) => {
-    el.style.left = pct(PAD + (i % cols) * (tileW + GAP), W);
-    el.style.top = pct(PAD + headH + Math.floor(i / cols) * (tileH + capH + GAP), H);
+    el.style.left = pct(PAD + (i % cols) * (tileW + gap), W);
+    el.style.top = pct(PAD + headH + Math.floor(i / cols) * (tileH + capH + gap), H);
     el.style.width = pct(tileW, W);
     el.style.height = pct(tileH, H);
   });
