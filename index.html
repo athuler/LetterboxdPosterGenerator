@@ -48,8 +48,12 @@
   .tile:hover button, .tile:focus-within button { opacity: 1; }
   @media (hover: none) { .tile button { opacity: .85; } }
   .hint { color: var(--muted); font-size: 13px; margin: 0; }
-  #recent-list { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; }
-  #recent-list li { display: flex; gap: 4px; }
+  /* Recent uploads: deliberately quiet, plain muted text links rather than buttons. */
+  #recent { color: var(--muted); font-size: 13px; }
+  #recent-list { list-style: none; margin: 2px 0 0; padding: 0; }
+  #recent-list li { display: flex; align-items: center; }
+  #recent-list button { background: none; border: 0; border-radius: 4px; color: inherit; font-size: inherit; padding: 2px 4px; }
+  #recent-list button:hover, #recent-list button:focus-visible { color: var(--fg); background: var(--bg); }
   .recent-open { flex: 1; min-width: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -66,7 +70,7 @@
     </label>
     <input id="file" type="file" accept=".zip,application/zip" hidden>
     <div id="recent" hidden>
-      <b>Recent exports</b> <small class="hint">stored only in this browser</small>
+      Recent uploads
       <ul id="recent-list"></ul>
     </div>
     <p id="status" role="status"></p>
