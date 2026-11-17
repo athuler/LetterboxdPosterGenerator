@@ -64,6 +64,26 @@
   #recent-list li { display: flex; align-items: center; }
   #recent-list button { background: none; border: 0; border-radius: 4px; color: inherit; font-size: inherit; padding: 2px 4px; }
   #recent-list button:hover, #recent-list button:focus-visible { color: var(--fg); background: var(--bg); }
+  dialog { width: min(460px, calc(100vw - 32px)); padding: 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--fg); }
+  dialog::backdrop { background: rgba(0,0,0,.5); }
+  dialog h2 { margin: 0 0 12px; font-size: 18px; }
+  #dl-form { display: grid; gap: 12px; }
+  .seg { display: flex; }
+  .seg label { flex: 1; display: block; text-align: center; padding: 7px; border: 1px solid var(--line); cursor: pointer; }
+  .seg label:first-child { border-radius: 6px 0 0 6px; }
+  .seg label:last-child { border-radius: 0 6px 6px 0; border-left: 0; }
+  .seg input { position: absolute; opacity: 0; }
+  .seg label:has(input:checked) { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .seg label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .seg label:has(input:disabled) { opacity: .5; cursor: not-allowed; }
+  #dl-sizes { display: grid; gap: 6px; max-height: 50vh; overflow: auto; }
+  #dl-sizes label { grid-template-columns: auto 1fr auto; gap: 2px 10px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+  #dl-sizes label:has(input:checked) { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+  #dl-sizes input { margin: 0; }
+  .size-detail { grid-column: 2 / -1; color: var(--muted); font-size: 13px; }
+  .badge { color: var(--accent); font-size: 12px; font-weight: 600; }
+  .warn { color: #c77c00; }
+  .dl-actions { display: flex; justify-content: flex-end; gap: 8px; }
   .recent-open { flex: 1; min-width: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -146,10 +166,25 @@
       <canvas id="poster" aria-label="Poster preview"></canvas>
       <div id="tiles"></div>
     </div>
-    <p class="hint">Drag posters to reorder. Hover or tap one for ✕ to remove it. Keyboard: Tab to a poster, then arrow keys or Delete.</p>
-    <button id="download" class="primary" type="button">Download PNG</button>
+    <p class="hint">Drag posters to reorder. Hover or tap one for ✕ to remove it.</p>
+    <button id="download" class="primary" type="button">Download…</button>
   </section>
 </main>
+<dialog id="dl" aria-labelledby="dl-title">
+  <form id="dl-form" autocomplete="off">
+    <h2 id="dl-title">Download</h2>
+    <div class="seg" role="radiogroup" aria-label="Format">
+      <label><input id="dl-png" type="radio" name="dl-format" value="png" checked> PNG</label>
+      <label><input id="dl-pdf" type="radio" name="dl-format" value="pdf"> PDF (print)</label>
+    </div>
+    <div id="dl-sizes" role="radiogroup" aria-label="Size"></div>
+    <p id="dl-note" class="hint"></p>
+    <div class="dl-actions">
+      <button id="dl-cancel" type="button">Cancel</button>
+      <button id="dl-go" class="primary" type="submit">Download</button>
+    </div>
+  </form>
+</dialog>
 <footer>
   This product uses the TMDB API but is not endorsed or certified by TMDB. Not affiliated with Letterboxd.
 </footer>

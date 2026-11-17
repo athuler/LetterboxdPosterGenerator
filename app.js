@@ -116,31 +116,32 @@ function contrast(hex) {
   const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
   return 0.299 * r + 0.587 * g + 0.114 * b > 140 ? '#151515' : '#f2f2f2';
 }
-function fit(text, maxW) {
-  if (ctx.measureText(text).width <= maxW) return text;
-  while (text && ctx.measureText(text + '…').width > maxW) text = text.slice(0, -1);
+function fit(c, text, maxW) {
+  if (c.measureText(text).width <= maxW) return text;
+  while (text && c.measureText(text + '…').width > maxW) text = text.slice(0, -1);
   return text + '…';
 }
 const stars = r => '★'.repeat(Math.floor(r)) + (r % 1 ? '½' : '');
 
-function textTile(f, x, y, w, h, fg) {
-  ctx.save();
-  ctx.globalAlpha = 0.12; ctx.fillStyle = fg; ctx.fillRect(x, y, w, h);
-  ctx.globalAlpha = 1; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+function textTile(c, f, x, y, w, h, fg) {
+  c.save();
+  c.globalAlpha = 0.12; c.fillStyle = fg; c.fillRect(x, y, w, h);
+  c.globalAlpha = 1; c.textAlign = 'center'; c.textBaseline = 'middle';
   const size = Math.max(12, w / 9);
-  ctx.font = `600 ${size}px system-ui, sans-serif`;
+  c.font = `600 ${size}px system-ui, sans-serif`;
   const lines = [];
   for (const word of f.name.split(' ')) {
     const last = lines.length - 1;
-    if (last >= 0 && ctx.measureText(lines[last] + ' ' + word).width < w * 0.85) lines[last] += ' ' + word;
+    if (last >= 0 && c.measureText(lines[last] + ' ' + word).width < w * 0.85) lines[last] += ' ' + word;
     else lines.push(word);
   }
   const shown = lines.slice(0, 6);
-  shown.forEach((l, i) => ctx.fillText(fit(l, w * 0.9), x + w / 2, y + h / 2 + (i - (shown.length - 1) / 2) * size * 1.2));
-  ctx.restore();
+  shown.forEach((l, i) => c.fillText(fit(c, l, w * 0.9), x + w / 2, y + h / 2 + (i - (shown.length - 1) / 2) * size * 1.2));
+  c.restore();
 }
 
-function render() {
+// Where everything goes, in poster units (the poster is always W wide; H depends on the size setting).
+function layout() {
   const cols = Math.max(1, Math.floor(Number($('cols').value)) || 5);
   const title = $('title').value.trim();
   const captions = $('captions').checked;
@@ -164,50 +165,59 @@ function render() {
   // Centre the grid in whatever space is left over.
   const x0 = (W - (cols * tileW + (cols - 1) * gap)) / 2;
   const y0 = PAD + headH + Math.max(0, availH - gridH(tileW)) / 2;
+  const at = i => [x0 + (i % cols) * (tileW + gap), y0 + Math.floor(i / cols) * (tileH + capH + gap)];
+  return { cols, title, captions, bg, fg, ratio, headH, H, availH, tileW, tileH, capSize, at };
+}
 
-  // Fixed sizes are meant for printing: render as large as the browser allows. "Fit to films" stays at 1x.
-  const scale = Math.min(ratio ? Infinity : 1, Math.sqrt(MAX_AREA / (W * H)), MAX_SIDE / H);
-  canvas.width = Math.floor(W * scale);
-  canvas.height = Math.floor(H * scale);
-  ctx.setTransform(scale, 0, 0, scale, 0, 0); // draw in poster units; the canvas size above already applied the scale
-  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
-  ctx.fillStyle = fg; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-
-  if (title) {
-    ctx.font = 'bold 76px system-ui, sans-serif';
-    ctx.fillText(fit(title, W - 2 * PAD), W / 2, PAD);
+// Draw the poster onto context c at `scale` output pixels per poster unit.
+function draw(c, L, scale) {
+  c.setTransform(scale, 0, 0, scale, 0, 0); // draw in poster units
+  c.fillStyle = L.bg; c.fillRect(0, 0, W, L.H);
+  c.fillStyle = L.fg; c.textAlign = 'center'; c.textBaseline = 'top';
+  if (L.title) {
+    c.font = 'bold 76px system-ui, sans-serif';
+    c.fillText(fit(c, L.title, W - 2 * PAD), W / 2, PAD);
   }
   if (!films.length) {
-    ctx.font = '36px system-ui, sans-serif'; ctx.globalAlpha = 0.6;
-    ctx.fillText('Drop your Letterboxd export or add films', W / 2, PAD + headH + availH / 2 - 18);
-    ctx.globalAlpha = 1;
+    c.font = '36px system-ui, sans-serif'; c.globalAlpha = 0.6;
+    c.fillText('Drop your Letterboxd export or add films', W / 2, PAD + L.headH + L.availH / 2 - 18);
+    c.globalAlpha = 1;
   }
-
+  const { tileW, tileH, capSize } = L;
   films.forEach((f, i) => {
-    const x = x0 + (i % cols) * (tileW + gap);
-    const y = y0 + Math.floor(i / cols) * (tileH + capH + gap);
+    const [x, y] = L.at(i);
     const img = f.poster && posterImage(f.poster, tileW * scale);
-    if (ready(img)) ctx.drawImage(img, x, y, tileW, tileH);
-    else textTile(f, x, y, tileW, tileH, fg);
-    if (captions) {
-      ctx.fillStyle = fg; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-      ctx.font = `600 ${capSize}px system-ui, sans-serif`;
-      ctx.fillText(fit(f.name, tileW), x + tileW / 2, y + tileH + capSize * 0.4);
-      ctx.font = `${capSize * 0.9}px system-ui, sans-serif`;
-      ctx.globalAlpha = 0.7;
-      ctx.fillText(fit([f.year, f.rating ? stars(f.rating) : ''].filter(Boolean).join('  '), tileW),
+    if (ready(img)) c.drawImage(img, x, y, tileW, tileH);
+    else textTile(c, f, x, y, tileW, tileH, L.fg);
+    if (L.captions) {
+      c.fillStyle = L.fg; c.textAlign = 'center'; c.textBaseline = 'top';
+      c.font = `600 ${capSize}px system-ui, sans-serif`;
+      c.fillText(fit(c, f.name, tileW), x + tileW / 2, y + tileH + capSize * 0.4);
+      c.font = `${capSize * 0.9}px system-ui, sans-serif`;
+      c.globalAlpha = 0.7;
+      c.fillText(fit(c, [f.year, f.rating ? stars(f.rating) : ''].filter(Boolean).join('  '), tileW),
         x + tileW / 2, y + tileH + capSize * 1.6);
-      ctx.globalAlpha = 1;
+      c.globalAlpha = 1;
     }
   });
+}
+
+// The on-screen preview: at most 1x (the download dialog renders bigger), within browser canvas limits.
+function render() {
+  const L = layout();
+  const scale = Math.min(1, Math.sqrt(MAX_AREA / (W * L.H)), MAX_SIDE / L.H);
+  canvas.width = Math.floor(W * scale);
+  canvas.height = Math.floor(L.H * scale);
+  draw(ctx, L, scale);
 
   // Line the editing overlay up with the drawn posters, in % so it follows the canvas's CSS size.
   const pct = (v, total) => (v / total * 100) + '%';
   [...$('tiles').children].forEach((el, i) => {
-    el.style.left = pct(x0 + (i % cols) * (tileW + gap), W);
-    el.style.top = pct(y0 + Math.floor(i / cols) * (tileH + capH + gap), H);
-    el.style.width = pct(tileW, W);
-    el.style.height = pct(tileH, H);
+    const [x, y] = L.at(i);
+    el.style.left = pct(x, W);
+    el.style.top = pct(y, L.H);
+    el.style.width = pct(L.tileW, W);
+    el.style.height = pct(L.tileH, L.H);
   });
 }
 
@@ -517,17 +527,193 @@ $('search').oninput = e => {
   const q = e.target.value.trim();
   searchTimer = setTimeout(() => search(q), 300);
 };
+// ---------- Download ----------
+// PNG sizes are output widths; PDF sizes are paper widths in inches (height follows the poster's ratio).
+// Keyed by the Poster size value. Wallpapers have no PDF.
+const WALLPAPERS = {
+  '0.5625': [['1080p', 1920], ['1440p', 2560], ['4K', 3840]],
+  '2.1667': [['', 1080], ['', 1170], ['', 1290]],
+};
+const PAPERS = {
+  '': [['A4 width', 8.27], ['Letter width', 8.5], ['A3 width', 11.69], ['A2 width', 16.54]],
+  '1.4142': [['A5', 5.83], ['A4', 8.27], ['A3', 11.69], ['A2', 16.54], ['A1', 23.39]],
+  '0.7071': [['A5', 8.27], ['A4', 11.69], ['A3', 16.54], ['A2', 23.39], ['A1', 33.11]],
+  '1.2941': [['Letter', 8.5]],
+  '0.7727': [['Letter', 11]],
+  '1.5': [['4×6 in', 4], ['8×12 in', 8], ['12×18 in', 12], ['24×36 in', 24]],
+  '1.3333': [['6×8 in', 6], ['9×12 in', 9], ['18×24 in', 18]],
+  '1.25': [['8×10 in', 8], ['16×20 in', 16]],
+  '1.5455': [['11×17 in', 11]],
+  '1': [['8×8 in', 8], ['12×12 in', 12], ['24×24 in', 24]],
+};
+// Readability thresholds for the smallest text (the caption's year / rating line).
+const MIN_PX = 12, MIN_PT = 6, PRINT_DPI = 300, ART_PX = 780; // ART_PX: TMDB's largest poster size we use
+
+// Many browsers allow canvases well past 16 MP; check once by drawing into a big one and reading back.
+let maxArea;
+function canvasMaxArea() {
+  if (maxArea) return maxArea;
+  for (const a of [64e6, 36e6]) {
+    const s = Math.floor(Math.sqrt(a)), c = document.createElement('canvas');
+    try {
+      c.width = c.height = s;
+      const x = c.getContext('2d');
+      x.fillRect(s - 1, s - 1, 1, 1);
+      if (x.getImageData(s - 1, s - 1, 1, 1).data[3] === 255) maxArea = a;
+    } catch { /* too big */ }
+    c.width = c.height = 0; // free the memory now
+    if (maxArea) return maxArea;
+  }
+  return (maxArea = MAX_AREA);
+}
+
+function sizeOptions(fmt) {
+  const L = layout(), key = $('size').value;
+  const maxW = Math.floor(Math.min(Math.sqrt(canvasMaxArea() * W / L.H), MAX_SIDE, MAX_SIDE * W / L.H));
+  const text = L.captions && films.length ? L.capSize * 0.9 : 0; // smallest text, in poster units
+  let opts, rec;
+  if (fmt === 'png') {
+    const presets = WALLPAPERS[key] || [1, 2, 3, 4, 6].map(k => ['', k * W]);
+    opts = presets.filter(([, w]) => w <= maxW).map(([name, w]) => ({ name, w }));
+    if (!WALLPAPERS[key] && (!opts.length || opts.at(-1).w < maxW * 0.9)) opts.push({ name: 'Largest', w: maxW });
+    for (const o of opts) {
+      const s = o.w / W, px = text * s, tile = L.tileW * s;
+      o.px = o.w;
+      o.head = `${o.name ? o.name + ' · ' : ''}${o.w.toLocaleString()} × ${Math.round(L.H * s).toLocaleString()} px`;
+      o.detail = '';
+      o.warn = text && px < MIN_PX ? 'Captions very small' : '';
+      o.ok = text ? px >= MIN_PX : tile >= 500;
+    }
+    rec = opts.findIndex(o => o.ok);
+    if (rec < 0) rec = opts.length - 1; // nothing reaches the target: the biggest gets closest
+  } else {
+    opts = (PAPERS[key] || []).filter(([, win]) => win * L.H / W <= 200).map(([name, win]) => { // jsPDF's max page is 200 in
+      const hin = win * L.H / W, px = Math.min(Math.round(win * PRINT_DPI), maxW);
+      const pt = text * win * 72 / W, dpi = px / win, artDpi = ART_PX / (L.tileW / W * win);
+      return {
+        name, win, hin, px, pt, artDpi,
+        head: name.endsWith(' in') ? name : `${name} · ${+win.toFixed(1)} × ${+hin.toFixed(1)} in`,
+        detail: `${Math.round(dpi)} dpi`,
+        warn: text && pt < MIN_PT ? 'Captions very small' : dpi < 150 ? 'Low resolution'
+          : artDpi < 100 ? 'Poster art may look soft' : '',
+      };
+    });
+    // With captions: the smallest paper where they're readable. Without: the largest where the art stays sharp.
+    rec = text ? opts.findIndex(o => o.pt >= MIN_PT) : opts.findLastIndex(o => o.artDpi >= 150);
+    if (rec < 0) rec = text ? opts.length - 1 : 0;
+  }
+  for (const o of opts) o.pixels = o.px * Math.round(o.px * L.H / W);
+  return { opts, rec, text };
+}
+
+// File size estimates: encode the on-screen preview once and scale its bytes per pixel up.
+// Bigger renders compress a bit better (smoother upscaled detail); the ^-0.25 matches measured exports.
+let bpp = null;
+async function measureBpp() {
+  const px = canvas.width * canvas.height;
+  const enc = type => new Promise(r => canvas.toBlob(b => r(b ? b.size / px : 0), type, 0.92));
+  const [png, pdf] = await Promise.all([enc('image/png'), enc('image/jpeg')]); // PDFs embed a JPEG
+  return { png, pdf, s0: canvas.width / W };
+}
+function estimate(o, fmt) {
+  if (!bpp || !bpp[fmt]) return '';
+  const mb = bpp[fmt] * o.pixels * ((o.px / W) / bpp.s0) ** -0.25 / 1048576;
+  return mb < 1 ? `~${Math.max(1, Math.round(mb * 1024 / 10) * 10)} KB` : `~${mb < 10 ? mb.toFixed(1) : Math.round(mb)} MB`;
+}
+
+let dlOpts = [];
+function renderSizes(keepChoice) {
+  const wallpaper = $('size').value in WALLPAPERS;
+  const pdf = $('dl-pdf');
+  pdf.disabled = wallpaper;
+  if (wallpaper) $('dl-png').checked = true;
+  const fmt = pdf.checked ? 'pdf' : 'png';
+  const { opts, rec } = sizeOptions(fmt);
+  const chosen = keepChoice ? Number(new FormData($('dl-form')).get('dl-size') ?? rec) : rec;
+  dlOpts = opts;
+  $('dl-sizes').replaceChildren(...opts.map((o, i) => {
+    const label = document.createElement('label');
+    const input = Object.assign(document.createElement('input'), { type: 'radio', name: 'dl-size', value: i, checked: i === chosen });
+    const head = Object.assign(document.createElement('b'), { textContent: o.head });
+    const badge = Object.assign(document.createElement('span'), { className: 'badge', textContent: i === rec ? 'Recommended' : '' });
+    const info = [o.detail, estimate(o, fmt)].filter(Boolean).join(' · ');
+    const detail = Object.assign(document.createElement('span'), { className: 'size-detail', textContent: info });
+    if (o.warn) detail.append(info ? ' · ' : '', Object.assign(document.createElement('span'), { className: 'warn', textContent: o.warn }));
+    label.append(input, head, badge);
+    if (info || o.warn) label.append(detail);
+    return label;
+  }));
+  $('dl-note').textContent = wallpaper ? 'Wallpapers download as PNG.' : '';
+  $('dl-note').hidden = !wallpaper;
+  $('dl-go').disabled = !opts.length;
+}
+
+const loaded = img => img.complete ? Promise.resolve()
+  : new Promise(r => { img.addEventListener('load', r, { once: true }); img.addEventListener('error', r, { once: true }); });
+
+// Render the poster offscreen at pxW wide, after loading the poster art that resolution needs.
+async function exportCanvas(pxW) {
+  const L = layout(), s = pxW / W;
+  const [want] = IMG_SIZES.find(([, w]) => w >= L.tileW * s) || IMG_SIZES.at(-1);
+  await Promise.race([
+    Promise.all(films.filter(f => f.poster).map(f => loaded(image(f.poster, want)))),
+    new Promise(r => setTimeout(r, 20000)), // don't hang on a slow image; it falls back to smaller art
+  ]);
+  const c = document.createElement('canvas');
+  c.width = Math.round(W * s);
+  c.height = Math.round(L.H * s);
+  draw(c.getContext('2d'), L, s);
+  return c;
+}
+
+let jspdf;
+const loadJsPDF = () => jspdf ||= new Promise((resolve, reject) => {
+  const s = Object.assign(document.createElement('script'), { src: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js' });
+  s.onload = () => resolve(window.jspdf.jsPDF);
+  s.onerror = () => { jspdf = null; s.remove(); reject(new Error("couldn't load the PDF library")); };
+  document.head.append(s);
+});
+
+function saveBlob(blob, name) {
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: name });
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
 $('download').onclick = () => {
+  bpp = null;
+  renderSizes();
+  $('dl').showModal();
+  measureBpp().then(b => { bpp = b; if ($('dl').open) renderSizes(true); }, () => {});
+};
+$('dl-png').onchange = $('dl-pdf').onchange = () => renderSizes();
+$('dl-cancel').onclick = () => $('dl').close();
+$('dl-form').onsubmit = async e => {
+  e.preventDefault();
+  const o = dlOpts[new FormData(e.target).get('dl-size')];
+  if (!o) return;
+  const go = $('dl-go'), name = ($('title').value.trim() || 'poster').replace(/[^\w-]+/g, '-');
+  go.disabled = true; go.textContent = 'Preparing…';
+  let c;
   try {
-    canvas.toBlob(blob => {
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = ($('title').value.trim() || 'poster').replace(/[^\w-]+/g, '-') + '.png';
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    }, 'image/png');
+    c = await exportCanvas(o.px);
+    if ($('dl-pdf').checked) {
+      const jsPDF = await loadJsPDF();
+      const doc = new jsPDF({ orientation: o.win > o.hin ? 'landscape' : 'portrait', unit: 'in', format: [o.win, o.hin], compress: true });
+      doc.addImage(c.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, o.win, o.hin);
+      saveBlob(doc.output('blob'), name + '.pdf');
+    } else {
+      const blob = await new Promise(r => c.toBlob(r, 'image/png'));
+      if (!blob) throw new Error('the image was too large to encode');
+      saveBlob(blob, name + '.png');
+    }
+    $('dl').close();
   } catch (err) {
-    status(`Export blocked by the browser: ${err.message}`);
+    $('dl-note').textContent = `Export failed: ${err.message}. Try a smaller size.`;
+    $('dl-note').hidden = false;
+  } finally {
+    if (c) c.width = c.height = 0;
+    go.disabled = false; go.textContent = 'Download';
   }
 };
 
