@@ -258,7 +258,6 @@ function renderTiles() {
     };
     return tile;
   }));
-  $('count').textContent = String(films.length);
 }
 
 function update() { applySort(); renderTiles(); resolvePosters(); scheduleRender(); saveState(); }
