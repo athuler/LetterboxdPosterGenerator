@@ -17,6 +17,9 @@
   footer { color: var(--muted); font-size: 13px; }
   main { display: grid; grid-template-columns: minmax(280px, 380px) 1fr; gap: 16px; padding: 0 16px; align-items: start; }
   @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
+  /* min-width: 0 lets grid columns shrink below their content (e.g. a select sized to a very long list name). */
+  section { min-width: 0; }
+  input[type=text], input[type=search], select { width: 100%; min-width: 0; text-overflow: ellipsis; }
   section { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
   .controls { display: grid; gap: 12px; }
   label { display: grid; gap: 4px; }
