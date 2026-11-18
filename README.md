@@ -1,6 +1,6 @@
 # Letterboxd Poster Generator
 
-[![Letterboxd Poster Generator](docs/banner.jpg)](https://postergenerator.andreithuler.com)
+[![Letterboxd Poster Generator: turn your Letterboxd lists into a poster to print or share. A wall of film posters behind the title and the site address, postergenerator.andreithuler.com](docs/banner.jpg)](https://postergenerator.andreithuler.com)
 
 Turn your Letterboxd lists into a poster: a grid of film posters with a title and captions, ready to print, set as a wallpaper or share.
 
@@ -11,7 +11,7 @@ Turn your Letterboxd lists into a poster: a grid of film posters with a title an
   <a href="https://github.com/sponsors/athuler"><img src="https://img.shields.io/badge/Sponsor_on-GitHub-EA4AAA?logo=githubsponsors&logoColor=white&style=for-the-badge" alt="Sponsor on GitHub"></a>
 </p>
 
-[![The app with the Letterboxd Top 250 as a poster](docs/app.jpg)](https://postergenerator.andreithuler.com)
+[![The Letterboxd Poster Generator in a browser: controls for the list, title, poster size, columns and style presets on the left, and a preview on the right of the Letterboxd Top 250 as an A-size poster of 250 film posters in 18 columns, each captioned with its title and year](docs/app.jpg)](https://postergenerator.andreithuler.com)
 
 ## Features
 
@@ -27,16 +27,16 @@ Turn your Letterboxd lists into a poster: a grid of film posters with a title an
 The same list in five of the style presets (Letterboxd, Cinema, Paper, Midnight, Garden):
 
 <p>
-  <a href="https://postergenerator.andreithuler.com"><img src="docs/style-letterboxd.jpg" width="19%" alt="Letterboxd style"></a>
-  <a href="https://postergenerator.andreithuler.com"><img src="docs/style-cinema.jpg" width="19%" alt="Cinema style"></a>
-  <a href="https://postergenerator.andreithuler.com"><img src="docs/style-paper.jpg" width="19%" alt="Paper style"></a>
-  <a href="https://postergenerator.andreithuler.com"><img src="docs/style-midnight.jpg" width="19%" alt="Midnight style"></a>
-  <a href="https://postergenerator.andreithuler.com"><img src="docs/style-garden.jpg" width="19%" alt="Garden style"></a>
+  <a href="https://postergenerator.andreithuler.com"><img src="docs/style-letterboxd.jpg" width="19%" alt="The Letterboxd Top 250 in the Letterboxd style: dark grey background, white sans-serif title and captions"></a>
+  <a href="https://postergenerator.andreithuler.com"><img src="docs/style-cinema.jpg" width="19%" alt="The Letterboxd Top 250 in the Cinema style: dark red gradient background, film-strip border, cream condensed title"></a>
+  <a href="https://postergenerator.andreithuler.com"><img src="docs/style-paper.jpg" width="19%" alt="The Letterboxd Top 250 in the Paper style: cream background, double-line border, dark serif title"></a>
+  <a href="https://postergenerator.andreithuler.com"><img src="docs/style-midnight.jpg" width="19%" alt="The Letterboxd Top 250 in the Midnight style: navy spotlight background, corner border, pale blue title"></a>
+  <a href="https://postergenerator.andreithuler.com"><img src="docs/style-garden.jpg" width="19%" alt="The Letterboxd Top 250 in the Garden style: pink dotted background, flower border, rounded burgundy title"></a>
 </p>
 
 Zoomed in to 4×, with the map of the whole poster in the corner:
 
-[![Zoomed in on the poster](docs/zoom.jpg)](https://postergenerator.andreithuler.com)
+[![The preview zoomed in to 4x, showing six film posters per row large enough to read their captions, with a small map of the whole poster in the top-right corner marking the part in view](docs/zoom.jpg)](https://postergenerator.andreithuler.com)
 
 ## How to use it
 
@@ -47,8 +47,8 @@ Zoomed in to 4×, with the map of the whole poster in the corner:
 5. Click **Download…** to save it, or **Share…** to post it.
 
 <p>
-  <a href="https://postergenerator.andreithuler.com"><img src="docs/download.png" width="49%" alt="The Download dialog: PNG or PDF, with sizes and file sizes"></a>
-  <a href="https://postergenerator.andreithuler.com"><img src="docs/share.png" width="49%" alt="The Share dialog with links to X, Bluesky, Threads, Facebook and Reddit"></a>
+  <a href="https://postergenerator.andreithuler.com"><img src="docs/download.png" width="49%" alt="The Download dialog: PNG or PDF (print), five sizes from 1,500 × 2,121 px to 6,727 × 9,513 px with their file sizes, the 3,000 × 4,243 px size marked Recommended and the smallest flagged Captions very small, and Cancel, Share and Download buttons"></a>
+  <a href="https://postergenerator.andreithuler.com"><img src="docs/share.png" width="49%" alt="The Share your poster dialog: Poster image copied, an instruction to paste the image into the new post, and buttons for X, Bluesky, Threads, Facebook and Reddit"></a>
 </p>
 
 Films TMDB has no poster for are drawn as their name; **Hide no-poster** leaves them out. Fonts come from your device, so they can look a little different from one computer to another.
