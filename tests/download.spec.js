@@ -52,9 +52,11 @@ test('PDF offers paper sizes for the poster shape, smallest readable one recomme
   await page.locator('#cols').fill('5');
   await openDownload(page);
   await page.locator('#dl-pdf').check({ force: true });
-  await expect(rows(page)).toHaveCount(5);
+  await expect(rows(page)).toHaveCount(6);
   await expect(rows(page).nth(0)).toContainText('A5');
   await expect(rows(page).nth(4)).toContainText('A1');
+  await expect(rows(page).nth(5)).toContainText('A0');
+  await expect(rows(page).nth(5)).toContainText('300 dpi'); // drawn in strips: no canvas size limit
   await expect(rows(page).first()).toContainText('dpi');
   await expectRecommendation(page);
 });
@@ -126,4 +128,19 @@ test('downloads a PDF with the chosen paper size', async ({ page }) => {
   expect(Number(w)).toBeCloseTo(595.4, 0);
   expect(Number(h)).toBeCloseTo(841.7, 0);
   expect(text).toContain('/DCTDecode'); // the poster is embedded as a JPEG
+});
+
+test('a PDF bigger than one canvas is drawn in strips and stays whole', async ({ page }) => {
+  test.setTimeout(60000);
+  await pickList(page);
+  await pick(page, 'size', '1.4142');
+  await openDownload(page);
+  await page.locator('#dl-pdf').check({ force: true });
+  await rows(page).filter({ hasText: 'A2' }).locator('input').check(); // 4,961 × 7,016 px: 3 strips of 16 MP
+  const { bytes } = await download(page);
+  const text = bytes.toString('latin1');
+  const [, w, h] = text.match(/\/MediaBox \[0 0 ([\d.]+) ([\d.]+)\]/);
+  expect(Number(w)).toBeCloseTo(1190.9, 0); // A2: 16.54 × 23.39 in
+  expect(Number(h)).toBeCloseTo(1684.1, 0);
+  expect(text.match(/\/Subtype \/Image/g)).toHaveLength(3);
 });

@@ -419,8 +419,9 @@ function autoCols() {
 }
 
 // Draw the poster onto context c at `scale` output pixels per poster unit.
-function draw(c, L, scale) {
-  c.setTransform(scale, 0, 0, scale, 0, 0); // draw in poster units
+// dy: skip this many output pixels from the top (to draw one strip of a big export).
+function draw(c, L, scale, dy = 0) {
+  c.setTransform(scale, 0, 0, scale, 0, -dy); // draw in poster units
   const s = L.style;
   drawBackground(c, s, L.H);
   drawBorder(c, s, L.H);
@@ -875,9 +876,9 @@ const WALLPAPERS = {
   '2.1667': [['', 1080], ['', 1170], ['', 1290]],
 };
 const PAPERS = {
-  '': [['A4 width', 8.27], ['Letter width', 8.5], ['A3 width', 11.69], ['A2 width', 16.54]],
-  '1.4142': [['A5', 5.83], ['A4', 8.27], ['A3', 11.69], ['A2', 16.54], ['A1', 23.39]],
-  '0.7071': [['A5', 8.27], ['A4', 11.69], ['A3', 16.54], ['A2', 23.39], ['A1', 33.11]],
+  '': [['A4 width', 8.27], ['Letter width', 8.5], ['A3 width', 11.69], ['A2 width', 16.54], ['A1 width', 23.39], ['A0 width', 33.11]],
+  '1.4142': [['A5', 5.83], ['A4', 8.27], ['A3', 11.69], ['A2', 16.54], ['A1', 23.39], ['A0', 33.11]],
+  '0.7071': [['A5', 8.27], ['A4', 11.69], ['A3', 16.54], ['A2', 23.39], ['A1', 33.11], ['A0', 46.81]],
   '1.2941': [['Letter', 8.5]],
   '0.7727': [['Letter', 11]],
   '1.5': [['4×6 in', 4], ['8×12 in', 8], ['12×18 in', 12], ['24×36 in', 24]],
@@ -928,7 +929,7 @@ function sizeOptions(fmt) {
     if (rec < 0) rec = opts.length - 1; // nothing reaches the target: the biggest gets closest
   } else {
     opts = (PAPERS[key] || []).filter(([, win]) => win * L.H / W <= 200).map(([name, win]) => { // jsPDF's max page is 200 in
-      const hin = win * L.H / W, px = Math.min(Math.round(win * PRINT_DPI), maxW);
+      const hin = win * L.H / W, px = Math.min(Math.round(win * PRINT_DPI), MAX_SIDE); // drawn in strips: no area limit
       const pt = text * win * 72 / W, dpi = px / win, artDpi = ART_PX / (L.tileW / W * win);
       return {
         name, win, hin, px, pt, artDpi,
@@ -997,18 +998,21 @@ const loaded = img => img.complete ? Promise.resolve()
   : new Promise(r => { img.addEventListener('load', r, { once: true }); img.addEventListener('error', r, { once: true }); });
 
 // Render the poster offscreen at pxW wide, after loading the poster art that resolution needs.
-async function exportCanvas(pxW) {
+// Draws the poster pxW wide, in strips of at most stripPx pixels each so a print bigger than the
+// browser's largest canvas still comes out whole: onStrip(canvas, y) gets each one in turn, top first.
+async function exportStrips(pxW, onStrip, stripPx = Infinity) {
   const L = layout(), s = pxW / W;
   const [want] = IMG_SIZES.find(([, w]) => w >= L.tileW * s) || IMG_SIZES.at(-1);
   await Promise.race([
     Promise.all(L.list.filter(f => f.poster).map(f => loaded(image(f.poster, want)))),
     new Promise(r => setTimeout(r, 20000)), // don't hang on a slow image; it falls back to smaller art
   ]);
-  const c = document.createElement('canvas');
-  c.width = Math.round(W * s);
-  c.height = Math.round(L.H * s);
-  draw(c.getContext('2d'), L, s);
-  return c;
+  const w = Math.round(W * s), h = Math.round(L.H * s), step = Math.max(1, Math.floor(stripPx / w));
+  for (let y = 0; y < h; y += step) {
+    const c = Object.assign(document.createElement('canvas'), { width: w, height: Math.min(step, h - y) });
+    try { draw(c.getContext('2d'), L, s, y); await onStrip(c, y); }
+    finally { c.width = c.height = 0; } // free each strip's memory before the next
+  }
 }
 
 let jspdf;
@@ -1042,25 +1046,26 @@ $('dl-form').onsubmit = async e => {
   if (!o) return;
   const go = $('dl-go'), name = ($('title').value.trim() || 'poster').replace(/[^\w-]+/g, '-');
   go.disabled = true; go.replaceChildren(spinner(), ' Preparing…');
-  let c;
   try {
-    c = await exportCanvas(o.px);
     if ($('dl-pdf').checked) {
       const jsPDF = await loadJsPDF();
       const doc = new jsPDF({ orientation: o.win > o.hin ? 'landscape' : 'portrait', unit: 'in', format: [o.win, o.hin], compress: true });
-      doc.addImage(c.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, o.win, o.hin);
+      const ppi = o.px / o.win;
+      // Strips of 16 MP: big papers keep their full print resolution whatever the browser's canvas limit.
+      await exportStrips(o.px, (c, y) => doc.addImage(c.toDataURL('image/jpeg', 0.92), 'JPEG', 0, y / ppi, o.win, c.height / ppi), MAX_AREA);
       saveBlob(doc.output('blob'), name + '.pdf');
     } else {
-      const blob = await new Promise(r => c.toBlob(r, 'image/png'));
-      if (!blob) throw new Error('the image was too large to encode');
-      saveBlob(blob, name + '.png');
+      await exportStrips(o.px, async c => {
+        const blob = await new Promise(r => c.toBlob(r, 'image/png'));
+        if (!blob) throw new Error('the image was too large to encode');
+        saveBlob(blob, name + '.png');
+      });
     }
     $('dl').close();
   } catch (err) {
     $('dl-note').textContent = `Export failed: ${err.message}. Try a smaller size.`;
     $('dl-note').hidden = false;
   } finally {
-    if (c) c.width = c.height = 0;
     go.disabled = false; go.textContent = 'Download';
   }
 };
