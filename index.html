@@ -107,7 +107,8 @@
   .tile button { position: absolute; top: 4px; right: 4px; padding: 0 6px; line-height: 1.6;
     background: rgba(0,0,0,.75); color: #fff; border: 0; border-radius: 50%; opacity: 0; }
   .tile:hover button, .tile:focus-within button { opacity: 1; }
-  @media (hover: none) { .tile button { opacity: .85; } }
+  /* Touch: always-on ✕s would bury small posters, so tap a poster to show its ✕ (hidden ones can't be tapped). */
+  @media (hover: none) { .tile button { visibility: hidden; } .tile:focus-within button { visibility: visible; } }
   .hint { color: var(--muted); font-size: 13px; margin: 0; }
   .stepper { display: flex; align-items: center; gap: 4px; }
   .stepper button { width: 2em; padding: 4px 0; font-weight: 600; }

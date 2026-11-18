@@ -165,3 +165,25 @@ test('a loading line counts posters still on their way, and goes away when they 
   release();
   await expect(page.locator('#loading')).toBeHidden();
 });
+
+test('the no-poster count shows straight away when the lookup was cached', async ({ page }) => {
+  await pickList(page);
+  await expect(page.locator('#missing-count')).toHaveText(' (1)');
+  await page.locator('#source').selectOption({ label: 'Ratings (3)' });
+  await page.locator('#source').selectOption({ label: 'Favourites, ranked (5)' }); // fresh films, lookups from the cache
+  await expect(page.locator('#missing-count')).toHaveText(' (1)');
+});
+
+test.describe('on a touch screen', () => {
+  test.use({ viewport: { width: 375, height: 812 }, hasTouch: true, isMobile: true });
+  test('✕ shows only on the tapped poster, so small posters are not buried', async ({ page }) => {
+    await pickList(page);
+    const x = tiles(page).locator('button');
+    for (const b of await x.all()) await expect(b).toBeHidden();
+    await tiles(page).nth(1).tap();
+    await expect(x.nth(1)).toBeVisible();
+    await expect(x.nth(0)).toBeHidden();
+    await x.nth(1).tap();
+    await expect(tiles(page)).toHaveCount(4);
+  });
+});

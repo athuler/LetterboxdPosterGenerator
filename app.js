@@ -561,7 +561,8 @@ function renderTiles() {
   }));
 }
 
-function update() { applySort(); renderTiles(); resolvePosters(); scheduleRender(true); saveState(); }
+// resolvePosters first: it fills cached "no poster" results that renderTiles counts and hides.
+function update() { applySort(); resolvePosters(); renderTiles(); scheduleRender(true); saveState(); }
 
 // ---------- Persistence: settings + film list in localStorage, recent zips in IndexedDB ----------
 // Everything stays in this browser. Storage can be blocked (private windows), so every access is guarded.
