@@ -1,15 +1,13 @@
-# Letterboxd Poster Generator
+# Letterboxd Film Poster Generator
 
 [![Letterboxd Poster Generator: turn your Letterboxd lists into a poster to print or share. A wall of film posters behind the title and the site address, postergenerator.andreithuler.com](docs/banner.jpg)](https://postergenerator.andreithuler.com)
-
-Turn your Letterboxd lists into a poster: a grid of film posters with a title and captions, ready to print, set as a wallpaper or share.
-
-**Use it at <https://postergenerator.andreithuler.com>**. It's free, needs no account, and your data never leaves your browser.
 
 <p align="center">
   <a href="https://ko-fi.com/andreithuler"><img src="https://img.shields.io/badge/Support_on-Ko--fi-FF5E5B?logo=ko-fi&logoColor=white&style=for-the-badge" alt="Support on Ko-fi"></a>
   <a href="https://github.com/sponsors/athuler"><img src="https://img.shields.io/badge/Sponsor_on-GitHub-EA4AAA?logo=githubsponsors&logoColor=white&style=for-the-badge" alt="Sponsor on GitHub"></a>
 </p>
+
+[Turn your Letterboxd lists into a poster](https://postergenerator.andreithuler.com): a grid of film posters with a title and captions, ready to print, set as a wallpaper or share.
 
 [![The Letterboxd Poster Generator in a browser: controls for the list, title, poster size, columns and style presets on the left, and a preview on the right of the Letterboxd Top 250 as an A-size poster of 250 film posters in 18 columns, each captioned with its title and year](docs/app.jpg)](https://postergenerator.andreithuler.com)
 
