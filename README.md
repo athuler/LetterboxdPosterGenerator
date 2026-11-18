@@ -24,13 +24,14 @@ Turn your Letterboxd lists into a poster: a grid of film posters with a title an
 - **Share:** send the poster to your phone's share menu, or copy it and post it to X, Bluesky, Threads, Facebook or Reddit.
 - **Remembered:** your settings, list and edits come back when you return, and your last 3 exports can be reopened in one click.
 
-The same list in four of the style presets (Cinema, Paper, Midnight, Garden):
+The same list in five of the style presets (Letterboxd, Cinema, Paper, Midnight, Garden):
 
 <p>
-  <a href="https://postergenerator.andreithuler.com"><img src="docs/style-cinema.jpg" width="24%" alt="Cinema style"></a>
-  <a href="https://postergenerator.andreithuler.com"><img src="docs/style-paper.jpg" width="24%" alt="Paper style"></a>
-  <a href="https://postergenerator.andreithuler.com"><img src="docs/style-midnight.jpg" width="24%" alt="Midnight style"></a>
-  <a href="https://postergenerator.andreithuler.com"><img src="docs/style-garden.jpg" width="24%" alt="Garden style"></a>
+  <a href="https://postergenerator.andreithuler.com"><img src="docs/style-letterboxd.jpg" width="19%" alt="Letterboxd style"></a>
+  <a href="https://postergenerator.andreithuler.com"><img src="docs/style-cinema.jpg" width="19%" alt="Cinema style"></a>
+  <a href="https://postergenerator.andreithuler.com"><img src="docs/style-paper.jpg" width="19%" alt="Paper style"></a>
+  <a href="https://postergenerator.andreithuler.com"><img src="docs/style-midnight.jpg" width="19%" alt="Midnight style"></a>
+  <a href="https://postergenerator.andreithuler.com"><img src="docs/style-garden.jpg" width="19%" alt="Garden style"></a>
 </p>
 
 Zoomed in to 4×, with the map of the whole poster in the corner:
