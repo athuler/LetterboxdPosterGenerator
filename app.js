@@ -138,12 +138,21 @@ function withWorking(fn) {
   $('working').hidden = false; // the redraw that follows hides it again
   requestAnimationFrame(() => requestAnimationFrame(fn));
 }
+// Before blocking work outside a redraw (making a download or a shared image): show "Working…", wait for it to paint.
+// While one runs, redraws (say, a poster image arriving) leave the pill up; endWorking takes it down.
+let exporting = 0;
+const showWorking = () => {
+  exporting++;
+  $('working').hidden = false;
+  return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+};
+const endWorking = () => { exporting = Math.max(0, exporting - 1); if (!exporting) $('working').hidden = true; };
 function timedRender() {
   frame = 0;
   const t = performance.now();
   try { render(); } finally {
     lastRenderMs = performance.now() - t;
-    $('working').hidden = true;
+    if (!exporting) $('working').hidden = true;
   }
 }
 
@@ -1053,34 +1062,45 @@ $('download').onclick = () => {
 };
 $('dl-png').onchange = $('dl-pdf').onchange = () => renderSizes();
 $('dl-cancel').onclick = () => $('dl').close();
-$('dl-form').onsubmit = async e => {
+async function pngBlob(px) {
+  let blob;
+  await exportStrips(px, async c => { blob = await new Promise(r => c.toBlob(r, 'image/png')); });
+  if (!blob) throw new Error('the image was too large to encode');
+  return blob;
+}
+// The size chosen in the Download dialog, as a file: for its Download and its Share buttons.
+async function makeFile(o, pdf) {
+  if (!pdf) return new File([await pngBlob(o.px)], fileName('.png'), { type: 'image/png' });
+  const jsPDF = await loadJsPDF();
+  const doc = new jsPDF({ orientation: o.win > o.hin ? 'landscape' : 'portrait', unit: 'in', format: [o.win, o.hin], compress: true });
+  const ppi = o.px / o.win;
+  // Strips of 16 MP: big papers keep their full print resolution whatever the browser's canvas limit.
+  await exportStrips(o.px, (c, y) => doc.addImage(c.toDataURL('image/jpeg', 0.92), 'JPEG', 0, y / ppi, o.win, c.height / ppi), MAX_AREA);
+  return new File([doc.output('blob')], fileName('.pdf'), { type: 'application/pdf' });
+}
+// Runs fn with b showing "Preparing…" (fn is called within the click, which sharing needs); errors go to report.
+async function busyButton(b, fn, report) {
+  const label = [...b.childNodes];
+  b.disabled = true; b.replaceChildren(spinner(), ' Preparing…');
+  try { await fn(); }
+  catch (err) { report(err); }
+  finally { b.disabled = false; b.replaceChildren(...label); endWorking(); }
+}
+const dlChoice = () => dlOpts[new FormData($('dl-form')).get('dl-size')];
+const dlFailed = err => { $('dl-note').textContent = `Export failed: ${err.message}. Try a smaller size.`; $('dl-note').hidden = false; };
+$('dl-form').onsubmit = e => {
   e.preventDefault();
-  const o = dlOpts[new FormData(e.target).get('dl-size')];
-  if (!o) return;
-  const go = $('dl-go'), name = ($('title').value.trim() || 'poster').replace(/[^\w-]+/g, '-');
-  go.disabled = true; go.replaceChildren(spinner(), ' Preparing…');
-  try {
-    if ($('dl-pdf').checked) {
-      const jsPDF = await loadJsPDF();
-      const doc = new jsPDF({ orientation: o.win > o.hin ? 'landscape' : 'portrait', unit: 'in', format: [o.win, o.hin], compress: true });
-      const ppi = o.px / o.win;
-      // Strips of 16 MP: big papers keep their full print resolution whatever the browser's canvas limit.
-      await exportStrips(o.px, (c, y) => doc.addImage(c.toDataURL('image/jpeg', 0.92), 'JPEG', 0, y / ppi, o.win, c.height / ppi), MAX_AREA);
-      saveBlob(doc.output('blob'), name + '.pdf');
-    } else {
-      await exportStrips(o.px, async c => {
-        const blob = await new Promise(r => c.toBlob(r, 'image/png'));
-        if (!blob) throw new Error('the image was too large to encode');
-        saveBlob(blob, name + '.png');
-      });
-    }
+  const o = dlChoice();
+  if (o) busyButton($('dl-go'), async () => {
+    await showWorking(); // so "Preparing…" shows before the page is busy
+    const f = await makeFile(o, $('dl-pdf').checked);
+    saveBlob(f, f.name);
     $('dl').close();
-  } catch (err) {
-    $('dl-note').textContent = `Export failed: ${err.message}. Try a smaller size.`;
-    $('dl-note').hidden = false;
-  } finally {
-    go.disabled = false; go.textContent = 'Download';
-  }
+  }, dlFailed);
+};
+$('dl-share').onclick = () => {
+  const o = dlChoice(), pdf = $('dl-pdf').checked;
+  if (o) busyButton($('dl-share'), () => share(showWorking().then(() => makeFile(o, pdf)), pdf ? 'application/pdf' : 'image/png'), dlFailed);
 };
 
 // ---------- Zoom: a closer look at part of the poster, with a map of where that is ----------
@@ -1152,6 +1172,51 @@ function movePan(e) {
 }
 $('stage').addEventListener('pointermove', movePan);
 for (const ev of ['pointerup', 'pointercancel']) $('stage').addEventListener(ev, () => { pan = null; $('stage').classList.remove('panning'); });
+
+// ---------- Share: the device's share sheet with the image, or copy it and start a post ----------
+// Sites can't attach an image to a post for you, so without a share sheet the image goes on the clipboard.
+const SHARE_TEXT = 'I made a poster of my Letterboxd movie list using https://postergenerator.andreithuler.com';
+const fileName = ext => ($('title').value.trim() || 'poster').replace(/[^\w-]+/g, '-') + ext;
+const canShareFiles = type => !!navigator.canShare?.({ files: [new File([''], 'p', { type })] });
+let shareFile = null;
+async function shareNative() {
+  try { await navigator.share({ files: [shareFile], text: SHARE_TEXT }); return true; }
+  catch (err) { return err.name === 'AbortError'; } // closing the share sheet isn't an error
+}
+// file: a promise of the File, started within the click (the clipboard needs that). Its type is known up front.
+async function share(file, type) {
+  file.catch(() => {}); // a failure is reported by the caller
+  $('share-native').hidden = true;
+  if (canShareFiles(type)) {
+    shareFile = await file;
+    if (await shareNative()) return;
+    // Making the file took too long for the browser to still count the click: one more tap shares it.
+    $('share-status').textContent = 'Your poster is ready.';
+    $('share-how').textContent = 'To post from your browser instead, download the poster, choose a site, and attach it to the new post.';
+    $('share-native').hidden = false;
+  } else {
+    let copied = false;
+    // Handing the clipboard a promise keeps the click's permission while the image is made.
+    if (type === 'image/png') try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': file })]); copied = true; } catch {}
+    const f = await file; // a failed image is reported by the caller, not as a failed copy
+    if (copied) {
+      $('share-status').textContent = 'Poster image copied ✓';
+      $('share-how').textContent = 'Choose where to post. When the new post opens, paste the image into it (Ctrl+V, or ⌘V on a Mac).';
+    } else { // a PDF can't go on the clipboard (and some browsers allow no images there): save it to attach
+      saveBlob(f, f.name);
+      $('share-status').textContent = `Saved ${f.name} ✓`;
+      $('share-how').textContent = 'Choose where to post. When the new post opens, attach the saved file to it.';
+    }
+  }
+  $('share-dlg').showModal();
+}
+// The quick Share: a PNG about 2000 px wide (sharp on any feed), within one canvas so it's quick to make.
+$('share').onclick = () => busyButton($('share'), () => {
+  const L = layout(), px = Math.floor(Math.min(2000, Math.sqrt(MAX_AREA * W / L.H)));
+  return share(showWorking().then(() => pngBlob(px)).then(b => new File([b], fileName('.png'), { type: 'image/png' })), 'image/png');
+}, err => status(`Couldn't make the image to share: ${err.message}`));
+$('share-native').onclick = async () => { if (await shareNative()) $('share-dlg').close(); };
+$('share-close').onclick = () => $('share-dlg').close();
 
 if (LOCAL && !TMDB_API_KEY) status('Local dev: add your TMDB key in config.local.js (see README), or run the Worker on :8787.');
 // The page starts as "Restoring your last session…" when there is one (see index.html); clear it when done.

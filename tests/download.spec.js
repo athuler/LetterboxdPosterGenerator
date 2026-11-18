@@ -144,3 +144,77 @@ test('a PDF bigger than one canvas is drawn in strips and stays whole', async ({
   expect(Number(h)).toBeCloseTo(1684.1, 0);
   expect(text.match(/\/Subtype \/Image/g)).toHaveLength(3);
 });
+
+test('Share copies the poster image and offers posting links, where there is no share sheet', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await pickList(page);
+  await page.locator('#share').click();
+  await expect(page.locator('#share-dlg')).toBeVisible();
+  await expect(page.locator('#share-status')).toHaveText('Poster image copied ✓');
+  await expect(page.locator('#share-how')).toContainText('paste the image');
+  await expect(page.locator('#share-native')).toBeHidden();
+  const types = await page.evaluate(async () => (await navigator.clipboard.read()).flatMap(i => i.types));
+  expect(types).toContain('image/png');
+  for (const a of await page.locator('#share-dlg a').all()) {
+    expect(await a.getAttribute('href')).toContain('postergenerator.andreithuler.com');
+  }
+  await page.locator('#share-close').click();
+  await expect(page.locator('#share-dlg')).toBeHidden();
+});
+
+test('Share opens the device share sheet with the poster image, where there is one', async ({ page }) => {
+  await page.addInitScript(() => {
+    navigator.canShare = d => !!d.files?.length;
+    navigator.share = async d => { window.shared = { name: d.files[0].name, type: d.files[0].type, size: d.files[0].size, text: d.text }; };
+  });
+  await pickList(page);
+  await page.locator('#share').click();
+  await expect.poll(() => page.evaluate(() => window.shared)).toBeTruthy();
+  const shared = await page.evaluate(() => window.shared);
+  expect(shared).toMatchObject({ name: 'Favourites-ranked.png', type: 'image/png' });
+  expect(shared.size).toBeGreaterThan(1000);
+  expect(shared.text).toContain('postergenerator.andreithuler.com');
+  await expect(page.locator('#share-dlg')).toBeHidden(); // shared straight away: nothing else to show
+});
+
+test('"Working…" is up before the image to share is made, and gone after', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await pickList(page);
+  // Note whether "Working…" was showing when the export started drawing (it blocks the page from then on).
+  await page.evaluate(() => {
+    const toBlob = HTMLCanvasElement.prototype.toBlob;
+    HTMLCanvasElement.prototype.toBlob = function (...a) {
+      if (this.width >= 1000) window.workingAtExport = !document.getElementById('working').hidden;
+      return toBlob.apply(this, a);
+    };
+  });
+  await page.locator('#share').click();
+  await expect(page.locator('#share-dlg')).toBeVisible();
+  expect(await page.evaluate(() => window.workingAtExport)).toBe(true);
+  await expect(page.locator('#working')).toBeHidden();
+});
+
+test('the Download dialog can share the chosen format and size', async ({ page }) => {
+  await page.addInitScript(() => {
+    navigator.canShare = d => !!d.files?.length;
+    navigator.share = async d => { window.shared = { name: d.files[0].name, type: d.files[0].type, head: await d.files[0].slice(0, 4).text() }; };
+  });
+  await pickList(page);
+  await pick(page, 'size', '1.4142');
+  await openDownload(page);
+  await page.locator('#dl-pdf').check({ force: true });
+  await rows(page).filter({ hasText: 'A4' }).locator('input').check();
+  await page.locator('#dl-share').click();
+  await expect.poll(() => page.evaluate(() => window.shared)).toBeTruthy();
+  expect(await page.evaluate(() => window.shared)).toEqual({ name: 'Favourites-ranked.pdf', type: 'application/pdf', head: '%PDF' });
+});
+
+test('sharing a PDF without a share sheet saves it to attach instead', async ({ page }) => {
+  await pickList(page);
+  await openDownload(page);
+  await page.locator('#dl-pdf').check({ force: true });
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.locator('#dl-share').click()]);
+  expect(dl.suggestedFilename()).toBe('Favourites-ranked.pdf');
+  await expect(page.locator('#share-status')).toHaveText('Saved Favourites-ranked.pdf ✓');
+  await expect(page.locator('#share-how')).toContainText('attach the saved file');
+});
