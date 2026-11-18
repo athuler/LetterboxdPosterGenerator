@@ -136,3 +136,14 @@ export async function waitForSave(page, check = () => true) {
     catch { return false; }
   }, check.toString());
 }
+
+// Open the "Customise" section of Style (closed by default).
+export async function customise(page) {
+  if (!await page.locator('#style').evaluate(d => d.open)) await page.locator('#style summary').click();
+}
+// Click a visual picker button (size, background style, border), opening "Customise" if needed.
+export async function pick(page, id, value) {
+  const b = page.locator(`.picker[data-for="${id}"] button[data-value="${value}"]`);
+  if (!await b.isVisible()) await customise(page);
+  await b.click();
+}

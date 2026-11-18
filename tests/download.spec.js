@@ -1,6 +1,6 @@
 // The download dialog: formats, sizes, recommendations, and that the files are real PNGs / PDFs.
 import { readFile } from 'node:fs/promises';
-import { test, expect, dropZip, tiles, canvasSize, ART } from './helpers.js';
+import { test, expect, pick, customise, dropZip, tiles, canvasSize, ART } from './helpers.js';
 
 const pickList = async page => {
   await page.goto('/');
@@ -9,6 +9,11 @@ const pickList = async page => {
   await expect(tiles(page)).toHaveCount(5);
 };
 const rows = page => page.locator('#dl-sizes label');
+// Open the dialog and wait for the file-size estimates, which rebuild the rows once measured.
+const openDownload = async page => {
+  await page.locator('#download').click();
+  await expect(rows(page).first()).toContainText(/~\d/);
+};
 
 // Sizes before "Recommended" warn about small captions; it and everything after don't.
 async function expectRecommendation(page) {
@@ -29,9 +34,9 @@ async function download(page) {
 
 test('opens with PNG sizes, a single recommendation and file size estimates', async ({ page }) => {
   await pickList(page);
-  await page.locator('#size').selectOption('1.4142');
+  await pick(page, 'size', '1.4142');
   await page.locator('#cols').fill('5');
-  await page.locator('#download').click();
+  await openDownload(page);
   await expect(page.locator('#dl')).toBeVisible();
   await expect(page.locator('#dl-png')).toBeChecked();
   await expect(rows(page).first()).toContainText('1,500 × 2,121 px');
@@ -43,9 +48,9 @@ test('opens with PNG sizes, a single recommendation and file size estimates', as
 
 test('PDF offers paper sizes for the poster shape, smallest readable one recommended', async ({ page }) => {
   await pickList(page);
-  await page.locator('#size').selectOption('1.4142');
+  await pick(page, 'size', '1.4142');
   await page.locator('#cols').fill('5');
-  await page.locator('#download').click();
+  await openDownload(page);
   await page.locator('#dl-pdf').check({ force: true });
   await expect(rows(page)).toHaveCount(5);
   await expect(rows(page).nth(0)).toContainText('A5');
@@ -56,21 +61,21 @@ test('PDF offers paper sizes for the poster shape, smallest readable one recomme
 
 test('smaller captions push the recommendation to a bigger size', async ({ page }) => {
   await pickList(page);
-  await page.locator('#size').selectOption('1.4142');
+  await pick(page, 'size', '1.4142');
   await page.locator('#cols').fill('3');
-  await page.locator('#download').click();
+  await openDownload(page);
   const few = (await expectRecommendation(page)).rec;
   await page.locator('#dl-cancel').click();
   await page.locator('#cols').fill('30');
-  await page.locator('#download').click();
+  await openDownload(page);
   const many = (await expectRecommendation(page)).rec;
   expect(many).toBeGreaterThan(few);
 });
 
 test('wallpapers offer screen resolutions and no PDF', async ({ page }) => {
   await pickList(page);
-  await page.locator('#size').selectOption('0.5625');
-  await page.locator('#download').click();
+  await pick(page, 'size', '0.5625');
+  await openDownload(page);
   await expect(page.locator('#dl-pdf')).toBeDisabled();
   await expect(rows(page)).toHaveText([/1080p · 1,920 × 1,080 px/, /1440p/, /4K · 3,840 × 2,160 px/]);
   await expect(page.locator('#dl-note')).toHaveText('Wallpapers download as PNG.');
@@ -79,9 +84,9 @@ test('wallpapers offer screen resolutions and no PDF', async ({ page }) => {
 test('downloads a PNG of the chosen size with the poster art in it', async ({ page }) => {
   await pickList(page);
   await page.locator('#title').fill('My "Poster"');
-  await page.locator('#size').selectOption('');
+  await pick(page, 'size', '');
   const [, previewH] = await canvasSize(page);
-  await page.locator('#download').click();
+  await openDownload(page);
   await rows(page).nth(1).locator('input').check(); // 2x: 3000 px wide
   const { name, bytes } = await download(page);
   expect(name).toBe('My-Poster-.png');
@@ -108,8 +113,8 @@ test('downloads a PNG of the chosen size with the poster art in it', async ({ pa
 
 test('downloads a PDF with the chosen paper size', async ({ page }) => {
   await pickList(page);
-  await page.locator('#size').selectOption('1.4142');
-  await page.locator('#download').click();
+  await pick(page, 'size', '1.4142');
+  await openDownload(page);
   await page.locator('#dl-pdf').check({ force: true });
   await rows(page).filter({ hasText: 'A4' }).locator('input').check();
   const { name, bytes } = await download(page);

@@ -1,12 +1,13 @@
 // Style: presets, backgrounds, text colour, title and caption fonts/sizes, borders, and that they're saved.
-import { test, expect, dropZip, tiles, canvasSize, nextFrame, waitForSave } from './helpers.js';
+import { test, expect, pick, customise, dropZip, tiles, canvasSize, nextFrame, waitForSave } from './helpers.js';
 
 const pickList = async page => {
   await page.goto('/');
   await dropZip(page);
   await page.locator('#source').selectOption({ label: 'Favourites, ranked (5)' });
   await expect(tiles(page)).toHaveCount(5);
-  await page.locator('#size').selectOption(''); // Fit to films: the preview is drawn at 1 px per poster unit
+  await customise(page);
+  await pick(page, 'size', ''); // Fit to films: the preview is drawn at 1 px per poster unit
 };
 const pixel = async (page, x, y) => {
   await nextFrame(page);
@@ -45,7 +46,7 @@ test('a gradient runs from the background colour at the top to the second colour
   await pickList(page);
   await page.locator('#bg').fill('#000000');
   await expect(page.locator('#bg2')).toBeDisabled(); // solid: no second colour
-  await page.locator('#bg-style').selectOption('gradient');
+  await pick(page, 'bg-style', 'gradient');
   await expect(page.locator('#bg2')).toBeEnabled();
   await page.locator('#bg2').fill('#ffffff');
   expect(near(await pixel(page, 5, 1), [0, 0, 0], 10)).toBe(true);
@@ -56,7 +57,7 @@ test('patterns draw the second colour over the background', async ({ page }) => 
   await pickList(page);
   await page.locator('#bg').fill('#000000');
   for (const style of ['dots', 'stripes', 'grid']) {
-    await page.locator('#bg-style').selectOption(style);
+    await pick(page, 'bg-style', style);
     await page.locator('#bg2').fill('#ff0000');
     // Somewhere in the top margin is now red.
     const reds = await page.evaluate(() => {
@@ -86,12 +87,12 @@ test('each border draws in the margin and never over a poster', async ({ page })
   const before = await snapshot(page);
   expect(await marginInk()).toBe(0);
   for (const b of ['line', 'double', 'corners', 'film', 'flowers']) {
-    await page.locator('#border').selectOption(b);
+    await pick(page, 'border', b);
     await nextFrame(page);
     expect(await marginInk(), b).toBeGreaterThan(50);
   }
   // Posters stay where they were: the border only changes the margin.
-  await page.locator('#border').selectOption('none');
+  await pick(page, 'border', 'none');
   expect(await snapshot(page)).toBe(before);
 });
 
@@ -163,4 +164,23 @@ test('style settings are saved and restored', async ({ page }) => {
   await expect(page.locator('#title-on')).not.toBeChecked();
   await expect(page.locator('#fg-auto')).not.toBeChecked();
   await expect.poll(() => snapshot(page)).toBe(before);
+});
+
+test('pickers set the value, show it as pressed, and follow presets and reloads', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('#style')).toHaveJSProperty('open', false); // Customise starts closed
+  const pressed = id => page.locator(`.picker[data-for="${id}"] [aria-pressed="true"]`);
+  await pick(page, 'size', '0.5625');
+  await expect(page.locator('#size')).toHaveValue('0.5625');
+  await expect(pressed('size')).toHaveAttribute('data-value', '0.5625');
+  await pick(page, 'border', 'film');
+  await expect(page.locator('#border')).toHaveValue('film');
+  await expect(pressed('border')).toHaveAttribute('data-value', 'film');
+  await page.getByRole('button', { name: 'Garden style' }).click();
+  await expect(pressed('bg-style')).toHaveAttribute('data-value', 'dots');
+  await expect(pressed('border')).toHaveAttribute('data-value', 'flowers');
+  await waitForSave(page, s => s.border === 'flowers' && s.size === '0.5625');
+  await page.reload();
+  await expect(pressed('size')).toHaveAttribute('data-value', '0.5625');
+  await expect(pressed('border')).toHaveAttribute('data-value', 'flowers');
 });

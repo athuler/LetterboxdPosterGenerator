@@ -1,5 +1,5 @@
 // Loading an export, picking lists, remembering recent uploads, restoring after a reload.
-import { test, expect, dropZip, dropFile, tiles, names, waitForSave, LIST, EXPORT } from './helpers.js';
+import { test, expect, pick, customise, dropZip, dropFile, tiles, names, waitForSave, LIST, EXPORT } from './helpers.js';
 
 test.beforeEach(async ({ page }) => { await page.goto('/'); });
 
@@ -50,8 +50,9 @@ test('settings, the chosen list and edits come back after a reload', async ({ pa
   await dropZip(page);
   await page.locator('#source').selectOption({ label: 'Favourites, ranked (5)' });
   await page.locator('#title').fill('My poster');
-  await page.locator('#size').selectOption({ label: 'Square' });
+  await pick(page, 'size', '1');
   await page.locator('#cols').fill('3');
+  await customise(page);
   await page.locator('#bg').fill('#ffffff');
   await page.locator('#cap-rating').uncheck();
   await page.locator('#sort').selectOption('title');
@@ -117,4 +118,24 @@ test('the file picker works as well as dropping', async ({ page }) => {
   await page.locator('#file').setInputFiles({ name: 'picked.zip', mimeType: 'application/zip', buffer: Buffer.from(zip) });
   await expect(page.locator('#loaded-name')).toHaveText('picked.zip');
   await expect(tiles(page)).toHaveCount(3);
+});
+
+test('a slow re-read of a big export after a reload does not lose the chosen list', async ({ page }) => {
+  await dropZip(page);
+  await page.locator('#source').selectOption({ label: 'Favourites, ranked (5)' });
+  await waitForSave(page, s => s.source === '3');
+  // Make reading the zip take longer than the 300 ms save delay, like a large export does.
+  await page.addInitScript(() => {
+    let jszip;
+    Object.defineProperty(window, 'JSZip', { configurable: true, get: () => jszip, set: v => {
+      const load = v.loadAsync.bind(v);
+      v.loadAsync = (...a) => new Promise(r => setTimeout(r, 1000)).then(() => load(...a));
+      jszip = v;
+    } });
+  });
+  await page.reload();
+  await expect(page.locator('#source')).toHaveValue('3');
+  await page.waitForTimeout(400); // let any pending save land
+  await page.reload();
+  await expect(page.locator('#source')).toHaveValue('3');
 });

@@ -21,21 +21,54 @@
   section { min-width: 0; }
   input[type=text], input[type=search], select { width: 100%; min-width: 0; text-overflow: ellipsis; }
   section { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
-  .controls { display: grid; gap: 12px; }
+  .controls { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
   label { display: grid; gap: 4px; }
   input, select, button { font: inherit; color: inherit; }
   input[type=text], input[type=search], input[type=number], input[type=color], select { padding: 7px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); }
   .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-  .row label, label.check, label.inline { display: flex; gap: 6px; align-items: center; }
-  #style { display: grid; gap: 10px; margin: 0; padding: 10px 12px 12px; border: 1px solid var(--line); border-radius: 8px; min-width: 0; }
-  #style legend { padding: 0 4px; color: var(--muted); font-size: 13px; }
-  #style select { width: auto; flex: 1; min-width: 0; }
-  #style input[type=range] { flex: 1; min-width: 80px; accent-color: var(--accent); }
-  #style input[type=color] { width: 2.6em; padding: 2px 3px; height: 2.2em; }
-  #style input:disabled { opacity: .35; }
-  .presets { display: flex; flex-wrap: wrap; gap: 6px; }
-  .presets button { display: flex; align-items: center; gap: 6px; padding: 4px 8px 4px 4px; font-size: 13px; }
-  .presets .swatch { width: 18px; height: 18px; border-radius: 4px; border: 1px solid rgba(127,127,127,.4); }
+  .controls h2 { margin: 6px 0 -4px; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .controls h2:first-of-type { margin-top: 0; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .row select.grow { width: auto; flex: 1; }
+  .spacer { flex: 1; }
+  /* Visual pickers: buttons standing in for a hidden <select> (or presets). */
+  .picker { display: flex; flex-wrap: wrap; gap: 4px; }
+  .picker button { display: grid; justify-items: center; align-content: end; gap: 3px; min-width: 50px; padding: 5px 3px 3px;
+    background: none; border: 2px solid transparent; border-radius: 8px; font-size: 11px; color: var(--muted); }
+  .picker button:hover { background: var(--bg); }
+  .picker button[aria-pressed=true] { border-color: var(--accent); color: var(--fg); font-weight: 600; }
+  .picker canvas { box-shadow: 0 1px 3px rgba(0,0,0,.35); border-radius: 2px; }
+  .shape { display: block; border: 2px solid currentColor; border-radius: 2px; opacity: .8; }
+  .shape.fit { border-style: dashed; }
+  #style { border-top: 1px solid var(--line); padding-top: 8px; }
+  #style summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+  #style[open] summary { margin-bottom: 8px; }
+  .opt { display: grid; gap: 6px; margin-bottom: 12px; }
+  .opt:last-child { margin-bottom: 0; }
+  .row.size { flex-wrap: nowrap; gap: 8px; color: var(--muted); }
+  .row.size input { flex: 1; min-width: 0; accent-color: var(--accent); }
+  .row.size big { font-size: 20px; line-height: 1; }
+  input[type=color] { width: 30px; height: 30px; padding: 0; border: 2px solid var(--line); border-radius: 50%; overflow: hidden; cursor: pointer; }
+  input[type=color]::-webkit-color-swatch-wrapper { padding: 0; }
+  input[type=color]::-webkit-color-swatch { border: 0; border-radius: 50%; }
+  input[type=color]::-moz-color-swatch { border: 0; border-radius: 50%; }
+  #style input:disabled, #style select:disabled { opacity: .35; }
+  /* Checkboxes drawn as toggle pills; the real input stays focusable (same trick as .seg). */
+  /* A text box with its name inside, on the left. */
+  label.field { display: flex; align-items: center; gap: 8px; padding-left: 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); }
+  label.field svg { flex: none; color: var(--muted); }
+  label.field input, label.field select { flex: 1; border: 0; padding-left: 0; background: none; }
+  label.field select:focus { outline: none; }
+  .row .grow { flex: 1; min-width: 0; }
+  /* A small uppercase label, matching the section headings. */
+  .controls .label { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  label.field:focus-within { outline: 2px solid var(--accent); outline-offset: -1px; }
+  label.field input:focus { outline: none; }
+  label.pill { position: relative; display: inline-flex; align-items: center; padding: 4px 11px; border: 1px solid var(--line);
+    border-radius: 999px; font-size: 13px; cursor: pointer; user-select: none; white-space: nowrap; }
+  label.pill input { position: absolute; opacity: 0; margin: 0; }
+  label.pill:has(input:checked) { background: var(--accent); border-color: var(--accent); color: #fff; }
+  label.pill:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
   button { cursor: pointer; border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 6px 10px; }
   button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
   button:disabled, input:disabled { opacity: .5; cursor: not-allowed; }
@@ -105,8 +138,8 @@
   <section class="controls">
     <div id="picker">
       <label id="drop" for="file">
-        Drop your Letterboxd export <b>.zip</b> here, or click to choose it.
-        <small>Get it at <a href="https://letterboxd.com/data/export/" target="_blank" rel="noopener">letterboxd.com/data/export</a>. It never leaves your browser.</small>
+        Drop your Letterboxd export <b>.zip</b>
+        <small><a href="https://letterboxd.com/data/export/" target="_blank" rel="noopener">How to get it</a> · stays in your browser</small>
       </label>
       <div id="recent" hidden>
         Recent uploads
@@ -120,13 +153,31 @@
     </div>
     <p id="status" role="status"></p>
 
-    <label><span id="lists-label">Lists</span>
-      <select id="source"><option value="">Start empty</option></select>
-    </label>
-    <label>Poster title <input id="title" type="text" placeholder="Optional"></label>
-    <label>Poster size
-      <!-- value = height / width; empty = grow to fit the films -->
-      <select id="size">
+    <h2 id="lists-label">Lists</h2>
+    <select id="source" aria-labelledby="lists-label"><option value="">Start empty</option></select>
+    <label class="field" title="Poster title"><svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M3 3h14v3.5h-2.2V5.2H11.4v10.6h2.1V18H6.5v-2.2h2.1V5.2H5.2v1.3H3z" fill="currentColor"/></svg><input id="title" type="text" placeholder="Poster title" aria-label="Poster title"></label>
+    <input id="search" type="search" placeholder="🔍 Add a film…" aria-label="Add a film" autocomplete="off">
+    <div id="results"></div>
+    <div class="row">
+      <label class="field grow" title="Sort"><svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V4M2.5 7.5 6 4l3.5 3.5M14 4v12M10.5 12.5 14 16l3.5-3.5"/></svg>
+      <select id="sort" aria-label="Sort">
+        <option value="list">List order</option>
+        <option value="custom">Custom (drag to arrange)</option>
+        <option value="title">Title A–Z</option>
+        <option value="year-asc">Year: oldest first</option>
+        <option value="year-desc">Year: newest first</option>
+        <option value="rating">Rating: highest first</option>
+        <option value="date-desc">Date logged: newest first</option>
+        <option value="date-asc">Date logged: oldest first</option>
+        <option value="shuffle">Shuffle</option>
+      </select></label>
+      <label class="pill" title="Hide films TMDB has no poster for"><input id="hide-missing" type="checkbox"> Hide no-poster<span id="missing-count"></span></label>
+      <button id="clear" type="button" title="Remove all films">Clear</button>
+    </div>
+
+    <h2>Layout</h2>
+    <!-- value = height / width; empty = grow to fit the films. Shown as the #size-pick shapes. -->
+    <select id="size" hidden aria-label="Poster size">
         <option value="">Fit to films</option>
         <option value="1.4142">A4, A3, A2, … portrait</option>
         <option value="0.7071">A4, A3, A2, … landscape</option>
@@ -139,23 +190,24 @@
         <option value="1">Square</option>
         <option value="0.5625">Desktop wallpaper (16:9)</option>
         <option value="2.1667">Phone wallpaper (9:19.5)</option>
-      </select>
-    </label>
+    </select>
+    <div class="picker" data-for="size" role="group" aria-label="Poster size"></div>
     <div class="row">
-      <span class="stepper">Columns
+      <span class="label">Columns</span>
+      <span class="stepper">
         <button id="cols-dec" type="button" aria-label="Fewer columns">−</button>
-        <input id="cols" type="number" min="1" value="5" aria-label="Columns">
+        <input id="cols" type="number" min="1" value="5" aria-label="Columns" title="Columns">
         <button id="cols-inc" type="button" aria-label="More columns">+</button>
       </span>
-      <button id="cols-auto" type="button" title="Set the number of columns that fits the poster best">Auto</button>
+      <button id="cols-auto" type="button" title="Set the number of columns that fits the poster best">✨ Auto</button>
     </div>
 
-    <fieldset id="style">
-      <legend>Style</legend>
-      <div id="presets" class="presets" role="group" aria-label="Style presets"></div>
-
-      <div class="row">Background
-        <select id="bg-style" aria-label="Background style">
+    <h2>Style</h2>
+    <div id="presets" class="picker" role="group" aria-label="Style presets"></div>
+    <details id="style">
+      <summary>Customise</summary>
+      <div class="opt"><span class="muted">Background</span>
+        <select id="bg-style" hidden aria-label="Background style">
           <option value="solid">Solid</option>
           <option value="gradient">Gradient</option>
           <option value="spotlight">Spotlight</option>
@@ -163,31 +215,18 @@
           <option value="stripes">Stripes</option>
           <option value="grid">Grid</option>
         </select>
-        <input id="bg" type="color" value="#14181c" aria-label="Background colour">
-        <input id="bg2" type="color" value="#2c3440" aria-label="Second background colour" title="Second colour">
+        <div class="picker" data-for="bg-style" role="group" aria-label="Background style"></div>
+        <div class="row">
+          <input id="bg" type="color" value="#14181c" aria-label="Background colour" title="Background colour">
+          <input id="bg2" type="color" value="#2c3440" aria-label="Second background colour" title="Second colour">
+          <span class="spacer"></span>
+          <span class="muted">Text</span>
+          <input id="fg" type="color" value="#f2f2f2" aria-label="Text colour" title="Text colour">
+          <label class="pill" title="Pick a readable text colour automatically"><input id="fg-auto" type="checkbox" checked> Auto</label>
+        </div>
       </div>
-      <div class="row">Text colour
-        <label><input id="fg-auto" type="checkbox" checked> Auto</label>
-        <input id="fg" type="color" value="#f2f2f2" aria-label="Text colour">
-      </div>
-
-      <div class="row" role="group" aria-label="Poster title">
-        <label><input id="title-on" type="checkbox" checked> Title</label>
-        <select id="title-font" aria-label="Title font"></select>
-        <input id="title-size" type="range" min="40" max="150" step="2" value="76" aria-label="Title size">
-      </div>
-      <div class="row" role="group" aria-label="Captions">Captions
-        <label><input id="cap-title" type="checkbox" checked> Title</label>
-        <label><input id="cap-year" type="checkbox" checked> Year</label>
-        <label><input id="cap-rating" type="checkbox" checked> Rating</label>
-      </div>
-      <div class="row" role="group" aria-label="Caption style">
-        <select id="cap-font" aria-label="Caption font"></select>
-        <input id="cap-size" type="range" min="0.6" max="1.8" step="0.05" value="1" aria-label="Caption size">
-      </div>
-
-      <label class="inline">Border
-        <select id="border">
+      <div class="opt"><span class="muted">Border</span>
+        <select id="border" hidden aria-label="Border">
           <option value="none">None</option>
           <option value="line">Line</option>
           <option value="double">Double line</option>
@@ -195,27 +234,28 @@
           <option value="film">Film strip</option>
           <option value="flowers">Flowers</option>
         </select>
-      </label>
-    </fieldset>
-
-    <label>Add a film <input id="search" type="search" placeholder="Search TMDB…" autocomplete="off"></label>
-    <div id="results"></div>
-
-    <label>Sort
-      <select id="sort">
-        <option value="list">List order</option>
-        <option value="custom">Custom (drag to arrange)</option>
-        <option value="title">Title A–Z</option>
-        <option value="year-asc">Year: oldest first</option>
-        <option value="year-desc">Year: newest first</option>
-        <option value="rating">Rating: highest first</option>
-        <option value="date-desc">Date logged: newest first</option>
-        <option value="date-asc">Date logged: oldest first</option>
-        <option value="shuffle">Shuffle</option>
-      </select>
-    </label>
-    <label class="check"><input id="hide-missing" type="checkbox"> Hide films without posters<span id="missing-count"></span></label>
-    <div class="row"><button id="clear" type="button">Clear</button></div>
+        <div class="picker" data-for="border" role="group" aria-label="Border"></div>
+      </div>
+      <div class="opt" role="group" aria-label="Poster title">
+        <div class="row">
+          <label class="pill"><input id="title-on" type="checkbox" checked> Poster title</label>
+          <select id="title-font" aria-label="Title font" class="grow"></select>
+        </div>
+        <div class="row size"><small>A</small><input id="title-size" type="range" min="40" max="150" step="2" value="76" aria-label="Title size"><big>A</big></div>
+      </div>
+      <div class="opt" role="group" aria-label="Captions">
+        <div class="row">
+          <span class="muted">Captions</span>
+          <label class="pill"><input id="cap-title" type="checkbox" checked> Movie title</label>
+          <label class="pill"><input id="cap-year" type="checkbox" checked> Year</label>
+          <label class="pill"><input id="cap-rating" type="checkbox" checked> Rating</label>
+        </div>
+        <div class="row">
+          <select id="cap-font" aria-label="Caption font" class="grow"></select>
+        </div>
+        <div class="row size"><small>A</small><input id="cap-size" type="range" min="0.6" max="1.8" step="0.05" value="1" aria-label="Caption size"><big>A</big></div>
+      </div>
+    </details>
   </section>
 
   <section class="preview">
@@ -223,7 +263,7 @@
       <canvas id="poster" aria-label="Poster preview"></canvas>
       <div id="tiles"></div>
     </div>
-    <p class="hint">Drag posters to reorder. Hover or tap one for ✕ to remove it.</p>
+    <p class="hint">Drag to reorder · ✕ to remove</p>
     <button id="download" class="primary" type="button">Download…</button>
   </section>
 </main>

@@ -145,51 +145,51 @@ const PRESETS = {
   Mono: { 'bg-style': 'grid', bg: '#ffffff', bg2: '#e4e4e4', 'fg-auto': false, fg: '#111111', 'title-font': 'mono', 'title-size': 70, 'cap-font': 'mono', 'cap-size': 0.95, border: 'line' },
 };
 
-function drawBackground(c, s, H) {
+function drawBackground(c, s, H, w = W) {
   if (s.bgStyle === 'gradient' || s.bgStyle === 'spotlight') {
     const g = s.bgStyle === 'gradient' ? c.createLinearGradient(0, 0, 0, H)
-      : c.createRadialGradient(W / 2, H * 0.4, 0, W / 2, H * 0.4, Math.hypot(W, H) * 0.6);
+      : c.createRadialGradient(w / 2, H * 0.4, 0, w / 2, H * 0.4, Math.hypot(w, H) * 0.6);
     g.addColorStop(0, s.bgStyle === 'gradient' ? s.bg : s.bg2);
     g.addColorStop(1, s.bgStyle === 'gradient' ? s.bg2 : s.bg);
     c.fillStyle = g;
   } else c.fillStyle = s.bg;
-  c.fillRect(0, 0, W, H);
+  c.fillRect(0, 0, w, H);
   if (!['dots', 'stripes', 'grid'].includes(s.bgStyle)) return;
   c.save();
   c.fillStyle = c.strokeStyle = s.bg2;
   c.beginPath();
   if (s.bgStyle === 'dots') {
-    for (let y = 15; y < H; y += 30) for (let x = 15 + (y / 30 % 2) * 15; x < W; x += 30) { c.moveTo(x + 3, y); c.arc(x, y, 3, 0, 2 * Math.PI); }
+    for (let y = 15; y < H; y += 30) for (let x = 15 + (y / 30 % 2) * 15; x < w; x += 30) { c.moveTo(x + 3, y); c.arc(x, y, 3, 0, 2 * Math.PI); }
     c.fill();
   } else if (s.bgStyle === 'stripes') {
     c.lineWidth = 9;
-    for (let x = -H; x < W; x += 34) { c.moveTo(x, H); c.lineTo(x + H, 0); }
+    for (let x = -H; x < w; x += 34) { c.moveTo(x, H); c.lineTo(x + H, 0); }
     c.stroke();
   } else {
     c.lineWidth = 1.5;
-    for (let x = 0; x <= W; x += 40) { c.moveTo(x, 0); c.lineTo(x, H); }
-    for (let y = 0; y <= H; y += 40) { c.moveTo(0, y); c.lineTo(W, y); }
+    for (let x = 0; x <= w; x += 40) { c.moveTo(x, 0); c.lineTo(x, H); }
+    for (let y = 0; y <= H; y += 40) { c.moveTo(0, y); c.lineTo(w, y); }
     c.stroke();
   }
   c.restore();
 }
 
 // Borders live in the page margin (PAD), so they never cover a poster.
-function drawBorder(c, s, H) {
+function drawBorder(c, s, H, w = W) {
   if (s.border === 'none') return;
   c.save();
   c.strokeStyle = c.fillStyle = s.fg;
   c.globalAlpha = 0.85;
   const m = 28;
-  if (s.border === 'line') { c.lineWidth = 3; c.strokeRect(m, m, W - 2 * m, H - 2 * m); }
+  if (s.border === 'line') { c.lineWidth = 3; c.strokeRect(m, m, w - 2 * m, H - 2 * m); }
   else if (s.border === 'double') {
-    c.lineWidth = 3; c.strokeRect(m - 6, m - 6, W - 2 * m + 12, H - 2 * m + 12);
-    c.lineWidth = 1.5; c.strokeRect(m + 4, m + 4, W - 2 * m - 8, H - 2 * m - 8);
+    c.lineWidth = 3; c.strokeRect(m - 6, m - 6, w - 2 * m + 12, H - 2 * m + 12);
+    c.lineWidth = 1.5; c.strokeRect(m + 4, m + 4, w - 2 * m - 8, H - 2 * m - 8);
   } else if (s.border === 'corners') {
-    const L = Math.min(110, W / 6, H / 6);
+    const L = Math.min(110, w / 6, H / 6);
     c.lineWidth = 4;
     c.beginPath();
-    for (const [x, y, dx, dy] of [[m, m, 1, 1], [W - m, m, -1, 1], [m, H - m, 1, -1], [W - m, H - m, -1, -1]]) {
+    for (const [x, y, dx, dy] of [[m, m, 1, 1], [w - m, m, -1, 1], [m, H - m, 1, -1], [w - m, H - m, -1, -1]]) {
       c.moveTo(x + dx * L, y); c.lineTo(x, y); c.lineTo(x, y + dy * L);
       c.moveTo(x + dx * (L * 0.55), y + dy * 12); c.lineTo(x + dx * 12, y + dy * 12); c.lineTo(x + dx * 12, y + dy * (L * 0.55));
     }
@@ -197,10 +197,10 @@ function drawBorder(c, s, H) {
   } else if (s.border === 'film') {
     // Sprocket holes down both sides, like a strip of 35 mm film.
     c.beginPath();
-    for (let y = 22; y + 16 < H - 10; y += 38) for (const x of [16, W - 16 - 24]) c.roundRect(x, y, 24, 16, 3);
+    for (let y = 22; y + 16 < H - 10; y += 38) for (const x of [16, w - 16 - 24]) c.roundRect(x, y, 24, 16, 3);
     c.fill();
     c.globalAlpha = 0.35; c.lineWidth = 2;
-    c.beginPath(); c.moveTo(52, 0); c.lineTo(52, H); c.moveTo(W - 52, 0); c.lineTo(W - 52, H); c.stroke();
+    c.beginPath(); c.moveTo(52, 0); c.lineTo(52, H); c.moveTo(w - 52, 0); c.lineTo(w - 52, H); c.stroke();
   } else if (s.border === 'flowers') {
     // Small five-petal flowers spaced evenly around the frame.
     const flower = (x, y) => {
@@ -214,8 +214,8 @@ function drawBorder(c, s, H) {
     };
     const m2 = 34, step = 64;
     const along = (len, f) => { const n = Math.max(1, Math.round(len / step)); for (let i = 0; i <= n; i++) f(i * len / n); };
-    along(W - 2 * m2, d => { flower(m2 + d, m2); flower(m2 + d, H - m2); });
-    along(H - 2 * m2, d => { if (d > 0 && d < H - 2 * m2) { flower(m2, m2 + d); flower(W - m2, m2 + d); } });
+    along(w - 2 * m2, d => { flower(m2 + d, m2); flower(m2 + d, H - m2); });
+    along(H - 2 * m2, d => { if (d > 0 && d < H - 2 * m2) { flower(m2, m2 + d); flower(w - m2, m2 + d); } });
   }
   c.restore();
 }
@@ -287,17 +287,62 @@ function layout(colsArg) {
   return { list, cols, title, cap, line2, style, fg: style.fg, ratio, headH, H, availH, tileW, tileH, capSize, minText, at };
 }
 
+// Auto text colour reads against the background's average tone.
+const autoFg = (bgStyle, bg, bg2) => contrast(['gradient', 'spotlight'].includes(bgStyle) ? mix(bg, bg2, 0.5) : bg);
+
 function styleOf() {
   const bgStyle = $('bg-style').value, bg = $('bg').value, bg2 = $('bg2').value;
-  // Auto text colour reads against the background's average tone.
-  const tone = ['gradient', 'spotlight'].includes(bgStyle) ? mix(bg, bg2, 0.5) : bg;
   return {
     bgStyle, bg, bg2,
-    fg: $('fg-auto').checked ? contrast(tone) : $('fg').value,
+    fg: $('fg-auto').checked ? autoFg(bgStyle, bg, bg2) : $('fg').value,
     titleFont: font($('title-font').value), titleSize: Number($('title-size').value) || 76,
     capFont: font($('cap-font').value), capScale: Number($('cap-size').value) || 1,
     border: $('border').value,
   };
+}
+
+// ---------- Visual pickers: buttons standing in for a hidden <select>; render() keeps them in sync ----------
+// A mini poster: a smaller virtual page (TW wide) so borders and patterns stay visible at thumbnail size.
+const TW = 500, TH = TW * Math.SQRT2;
+function thumb(s, cvs = document.createElement('canvas')) {
+  const css = 46, dpr = 2;
+  cvs.width = css * dpr; cvs.height = Math.round(css * Math.SQRT2 * dpr);
+  cvs.style.width = css + 'px';
+  const c = cvs.getContext('2d');
+  c.setTransform(cvs.width / TW, 0, 0, cvs.width / TW, 0, 0);
+  drawBackground(c, s, TH, TW);
+  drawBorder(c, s, TH, TW);
+  c.fillStyle = s.fg;
+  c.globalAlpha = 0.9; c.fillRect(TW * 0.3, 60, TW * 0.4, 22); // the title
+  c.globalAlpha = 0.35;
+  for (let r = 0; r < 3; r++) for (let k = 0; k < 3; k++) c.fillRect(85 + k * 115, 120 + r * 170, 100, 150); // posters
+  return cvs;
+}
+const pickers = [];
+function picker(id, paint) {
+  const sel = $(id), box = document.querySelector(`.picker[data-for="${id}"]`);
+  box.replaceChildren(...[...sel.options].map(o => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.dataset.value = o.value; b.title = o.text;
+    b.setAttribute('aria-label', o.text);
+    b.onclick = () => { sel.value = o.value; for (const t of ['input', 'change']) sel.dispatchEvent(new Event(t)); };
+    return b;
+  }));
+  pickers.push({ sel, box, paint });
+}
+function syncPickers(s) {
+  const style = $('style'); // thumbnails in "Customise" follow the current colours, repainted only while it's open
+  for (const { sel, box, paint } of pickers) for (const b of box.children) {
+    b.setAttribute('aria-pressed', String(b.dataset.value === sel.value));
+    if (!b.firstChild || (style.open && style.contains(box))) paint(b, b.dataset.value, s);
+  }
+}
+const caption = text => { const t = document.createElement('span'); t.textContent = text; return t; };
+const SIZE_SHORT = { '': 'Fit', 1.4142: 'A', 0.7071: 'A ↔', 1.2941: 'Letter', 0.7727: 'Letter ↔', 1.5: '2:3', 1.3333: '3:4',
+  1.25: '4:5', 1.5455: '11×17', 1: 'Square', 0.5625: 'Desktop', 2.1667: 'Phone' };
+function paintThumb(b, s, text) {
+  if (!b.firstChild) b.append(document.createElement('canvas'), caption(text));
+  thumb(s, b.firstChild);
 }
 
 // The best column count: on a fixed page, the one that makes the posters biggest;
@@ -368,6 +413,7 @@ function render() {
   if ($('fg-auto').checked) $('fg').value = L.fg;
   $('bg2').disabled = L.style.bgStyle === 'solid' && L.style.border !== 'flowers';
   for (const id of ['title-font', 'title-size']) $(id).disabled = !$('title-on').checked;
+  syncPickers(L.style);
 
   // Line the editing overlay up with the drawn posters, in % so it follows the canvas's CSS size.
   const pct = (v, total) => (v / total * 100) + '%';
@@ -473,11 +519,13 @@ const CHECKS = ['cap-title', 'cap-year', 'cap-rating', 'hide-missing', 'fg-auto'
 const MAX_RECENT = 3;
 let currentZipId = null;
 let saveTimer;
+// The saved source while its zip is still being re-read after a reload (the menu is empty until then).
+let restoringSource;
 
 function saveState() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
-    const state = { zipId: currentZipId, source: $('source').value, films };
+    const state = { zipId: currentZipId, source: restoringSource ?? $('source').value, films };
     for (const id of SETTINGS) state[id] = $(id).value;
     state.checks = Object.fromEntries(CHECKS.map(id => [id, $(id).checked]));
     try { localStorage.setItem('state', JSON.stringify(state)); } catch {}
@@ -560,6 +608,7 @@ function showLoaded(name) {
 function unloadZip() {
   sources = [];
   currentZipId = null;
+  restoringSource = undefined;
   $('source').replaceChildren(new Option('Start empty', ''));
   $('file').value = ''; // so choosing the same file again still fires "change"
   showLoaded(null);
@@ -580,14 +629,16 @@ async function restore() {
     films = Array.isArray(state.films) ? state.films : [];
     seq = films.reduce((m, f) => Math.max(m, f.order + 1, f.custom + 1), 0);
     currentZipId = state.zipId ?? null; // set before update() so its save keeps the link
+    if (currentZipId) restoringSource = state.source;
   }
   update();
   renderRecent();
   if (!currentZipId) return;
   let entry;
   try { entry = await zips('readonly', s => s.get(currentZipId)); } catch {}
-  if (!entry) { currentZipId = null; saveState(); return; } // zip was forgotten or storage cleared
-  loadZip(entry.file, state.source); // refills the Source menu without touching the restored films
+  if (!entry) { restoringSource = undefined; currentZipId = null; saveState(); return; } // zip was forgotten or storage cleared
+  await loadZip(entry.file, state.source); // refills the Source menu without touching the restored films
+  restoringSource = undefined;
 }
 
 // ---------- Zip import ----------
@@ -698,10 +749,8 @@ for (const id of ['title-font', 'cap-font']) {
 $('presets').replaceChildren(...Object.entries(PRESETS).map(([name, p]) => {
   const b = document.createElement('button');
   b.type = 'button';
-  const sw = document.createElement('span');
-  sw.className = 'swatch';
-  sw.style.background = p['bg-style'] === 'solid' ? p.bg : `linear-gradient(135deg, ${p.bg} 45%, ${p.bg2})`;
-  b.append(sw, name);
+  const fg = p['fg-auto'] ? autoFg(p['bg-style'], p.bg, p.bg2) : p.fg;
+  b.append(thumb({ bgStyle: p['bg-style'], bg: p.bg, bg2: p.bg2, fg, border: p.border }), caption(name));
   b.setAttribute('aria-label', `${name} style`);
   b.onclick = () => {
     for (const [id, v] of Object.entries(p)) {
@@ -711,6 +760,16 @@ $('presets').replaceChildren(...Object.entries(PRESETS).map(([name, p]) => {
   };
   return b;
 }));
+picker('size', (b, v) => {
+  const shape = document.createElement('span');
+  shape.className = 'shape' + (v ? '' : ' fit');
+  const r = Number(v) || Math.SQRT2, h = Math.min(30, 34 * r); // fit within 34×30
+  shape.style.width = h / r + 'px'; shape.style.height = h + 'px';
+  b.append(shape, caption(SIZE_SHORT[v] ?? v));
+});
+picker('bg-style', (b, v, s) => paintThumb(b, { ...s, bgStyle: v, border: 'none' }, b.title));
+picker('border', (b, v, s) => paintThumb(b, { ...s, border: v }, b.title.replace(' line', '').replace(' strip', '')));
+$('style').addEventListener('toggle', scheduleRender);
 $('size').addEventListener('change', autoCols); // a new page shape gets the best column count
 $('cols-auto').onclick = autoCols;
 $('hide-missing').onchange = update;
