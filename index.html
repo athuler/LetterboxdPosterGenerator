@@ -84,16 +84,14 @@
   .restoring #restoring { display: block; }
   .restoring #picker { display: none; }
   /* Spinner for things that take a few seconds; holds still for people who prefer reduced motion. */
-  .spinner { display: inline-block; width: .9em; height: .9em; vertical-align: -.1em; border: 2px solid currentColor;
-    border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; }
+  .spinner, #status.busy::before { display: inline-block; width: .9em; height: .9em; vertical-align: -.1em; border: 2px solid currentColor;
+    border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite;
+    will-change: transform; } /* composited, so it keeps turning while the page is busy */
+  #status.busy::before { content: ""; margin-right: 6px; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .spinner, #status.busy::before { will-change: transform; } /* composited, so it keeps turning while the page is busy */
   #working { position: fixed; bottom: 20px; left: 50%; translate: -50% 0; z-index: 10; display: flex; align-items: center; gap: 8px;
     padding: 7px 14px; border-radius: 999px; background: var(--panel); color: var(--fg); box-shadow: 0 2px 12px rgba(0,0,0,.35); font-size: 14px; pointer-events: none; }
-  @media (prefers-reduced-motion: reduce) { .spinner { animation: none; opacity: .6; } }
-  #status.busy::before { content: ""; display: inline-block; width: .9em; height: .9em; margin-right: 6px; vertical-align: -.1em;
-    border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; }
-  @media (prefers-reduced-motion: reduce) { #status.busy::before { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { .spinner, #status.busy::before { animation: none; opacity: .6; } }
   #results { display: grid; gap: 4px; }
   #results button { display: flex; gap: 8px; align-items: center; text-align: left; }
   #results img { width: 30px; height: 45px; object-fit: cover; background: var(--line); }
@@ -153,8 +151,11 @@
 <script>
   // A saved session takes a moment to come back (a big export is re-read): say so from the first paint.
   try { const s = JSON.parse(localStorage.getItem("state")); if (s && (s.zipId || s.films?.length)) document.documentElement.classList.add("restoring"); } catch {}
+  // If the app fails to load or crashes, bring the drop zone back rather than "Restoring…" forever.
+  const unrestore = () => document.documentElement.classList.remove("restoring");
+  addEventListener("error", unrestore);
 </script>
-<script type="module" src="app.js"></script>
+<script type="module" src="app.js" onerror="unrestore()"></script>
 </head>
 <body>
 <header><h1>Letterboxd Poster Generator</h1></header>

@@ -13,6 +13,7 @@ const IMG = 'https://image.tmdb.org/t/p/';
 // so very long lists render at a lower resolution instead of failing.
 const MAX_AREA = 16e6, MAX_SIDE = 32000;
 
+const PICK_LIST = 'Pick a list, or add films yourself'; // also the first option in index.html
 let sources = [];   // [{ title, films }] from the dropped zip
 let films = [];     // the working list the poster is drawn from
 
@@ -122,8 +123,10 @@ const W = 1500, PAD = 70, GAP_RATIO = 0.08;
 const SLOW_MS = 100;
 let frame = 0, lastRenderMs = 0;
 function scheduleRender(fromUser = false) {
-  if (frame) return;
-  if (fromUser === true && lastRenderMs > SLOW_MS) {
+  const slow = fromUser === true && lastRenderMs > SLOW_MS;
+  if (frame && !(slow && $('working').hidden)) return; // a plain frame already queued is upgraded to show "Working…"
+  cancelAnimationFrame(frame);
+  if (slow) {
     $('working').hidden = false;
     frame = requestAnimationFrame(() => { frame = requestAnimationFrame(timedRender); }); // a frame to paint it first
   } else frame = requestAnimationFrame(timedRender);
@@ -131,9 +134,10 @@ function scheduleRender(fromUser = false) {
 function timedRender() {
   frame = 0;
   const t = performance.now();
-  render();
-  lastRenderMs = performance.now() - t;
-  $('working').hidden = true;
+  try { render(); } finally {
+    lastRenderMs = performance.now() - t;
+    $('working').hidden = true;
+  }
 }
 
 const rgb = hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
@@ -285,6 +289,7 @@ function textTile(c, f, x, y, w, h, fg, family, scale = 1) {
 const shown = () => $('hide-missing').checked ? films.filter(f => f.poster !== null) : films;
 
 // Where everything goes, in poster units (the poster is always W wide; H depends on the size setting).
+let titleMemo = {};
 // colsArg overrides the Columns field (used to try counts for Auto).
 function layout(colsArg) {
   const list = shown(), n = list.length;
@@ -296,8 +301,12 @@ function layout(colsArg) {
   const nameLines = cap.title ? (wrap ? 2 : 1) : 0; // wrapped names get room for a second line
   const lines = nameLines + line2;
   const ratio = Number($('size').value) || 0; // page height / width; 0 = grow to fit the films
-  ctx.font = `bold ${style.titleSize}px ${style.titleFont}`; // measured in poster units, like the drawing
-  const titleLines = !title ? [] : $('title-wrap').checked ? wrapText(ctx, title, W - 2 * PAD, 3) : [fit(ctx, title, W - 2 * PAD)];
+  const titleKey = [title, style.titleSize, style.titleFont, $('title-wrap').checked].join('|');
+  if (titleMemo.key !== titleKey) { // layout runs dozens of times per Auto: measure the title once
+    ctx.font = `bold ${style.titleSize}px ${style.titleFont}`; // measured in poster units, like the drawing
+    titleMemo = { key: titleKey, lines: !title ? [] : $('title-wrap').checked ? wrapText(ctx, title, W - 2 * PAD, 3) : [fit(ctx, title, W - 2 * PAD)] };
+  }
+  const titleLines = titleMemo.lines;
   const headH = title ? style.titleSize * (1 + 1.15 * (titleLines.length - 1)) + 74 : 0; // 150 for one line at the default size
   const capSizeFor = tw => Math.max(11, Math.min(26, tw / 10)) * style.capScale;
   const capFor = tw => lines ? capSizeFor(tw) * (0.4 + 1.2 * lines) : 0;
@@ -420,19 +429,23 @@ function draw(c, L, scale) {
     c.globalAlpha = 1;
   }
   const { tileW, tileH, capSize, cap } = L;
+  let loading = 0; // films still waiting for a TMDB lookup (undefined) or their image; null = no poster: done
   L.list.forEach((f, i) => {
     const [x, y] = L.at(i);
     const img = f.poster && posterImage(f.poster, tileW * scale);
+    if (f.poster === undefined || (img && !ready(img) && !img.failed)) loading++;
     if (ready(img)) c.drawImage(img, x, y, tileW, tileH);
     else textTile(c, f, x, y, tileW, tileH, L.fg, s.capFont, s.npScale);
     c.fillStyle = L.fg; c.textAlign = 'center'; c.textBaseline = 'top';
     let ty = y + tileH + capSize * 0.4;
     if (cap.title) {
       c.font = `600 ${capSize}px ${s.capFont}`;
+      const next = ty + (L.wrap ? 2 : 1) * capSize * 1.2; // the year line sits at the same height across a row
       for (const l of L.wrap ? wrapText(c, f.name, tileW, 2) : [fit(c, f.name, tileW)]) {
         c.fillText(l, x + tileW / 2, ty);
         ty += capSize * 1.2;
       }
+      ty = next;
     }
     if (L.line2) {
       c.font = `${capSize * 0.9}px ${s.capFont}`;
@@ -442,6 +455,7 @@ function draw(c, L, scale) {
       c.globalAlpha = 1;
     }
   });
+  return loading;
 }
 
 // The on-screen preview: at most 1x (the download dialog renders bigger), within browser canvas limits.
@@ -450,14 +464,7 @@ function render() {
   const scale = Math.min(1, Math.sqrt(MAX_AREA / (W * L.H)), MAX_SIDE / L.H);
   canvas.width = Math.floor(W * scale);
   canvas.height = Math.floor(L.H * scale);
-  draw(ctx, L, scale);
-
-  // Films still waiting for a TMDB lookup or their image.
-  const loading = L.list.filter(f => {
-    if (!f.poster) return f.poster === undefined; // null = TMDB has no poster: done
-    const img = posterImage(f.poster, L.tileW * scale);
-    return !ready(img) && !img.failed;
-  }).length;
+  const loading = draw(ctx, L, scale);
   $('loading').hidden = !loading;
   $('loading-n').textContent = loading === 1 ? 'Loading 1 poster…' : `Loading ${loading} posters…`;
 
@@ -662,7 +669,7 @@ function unloadZip() {
   sources = [];
   currentZipId = null;
   restoringSource = undefined;
-  $('source').replaceChildren(new Option('Pick a list, or add films yourself', ''));
+  $('source').replaceChildren(new Option(PICK_LIST, ''));
   $('file').value = ''; // so choosing the same file again still fires "change"
   showLoaded(null);
   renderRecent();
@@ -682,7 +689,7 @@ async function restore() {
     films = Array.isArray(state.films) ? state.films : [];
     seq = films.reduce((m, f) => Math.max(m, f.order + 1, f.custom + 1), 0);
     currentZipId = state.zipId ?? null; // set before update() so its save keeps the link
-    if (currentZipId) { restoringSource = state.source; $('source').replaceChildren(new Option('Loading lists…', '')); }
+    if (currentZipId) { restoringSource = state.source ?? ''; /* older saves have no source: still keep their films */ $('source').replaceChildren(new Option('Loading lists…', '')); }
   }
   update();
   renderRecent();
@@ -691,10 +698,10 @@ async function restore() {
   try { entry = await zips('readonly', s => s.get(currentZipId)); } catch {}
   if (!entry) { // zip was forgotten or storage cleared
     restoringSource = undefined; currentZipId = null; saveState();
-    $('source').replaceChildren(new Option('Pick a list, or add films yourself', ''));
+    $('source').replaceChildren(new Option(PICK_LIST, ''));
     return;
   }
-  await loadZip(entry.file, state.source); // refills the Source menu without touching the restored films
+  await loadZip(entry.file, state.source ?? ''); // refills the Source menu without touching the restored films
   restoringSource = undefined;
 }
 
@@ -718,7 +725,7 @@ async function loadZip(file, restoreSource) {
     }
     if (!found.length) { status('No Letterboxd lists found in that zip.'); return false; }
     sources = found.sort((a, b) => a.order - b.order || a.title.localeCompare(b.title));
-    $('source').replaceChildren(new Option('Pick a list, or add films yourself', ''),
+    $('source').replaceChildren(new Option(PICK_LIST, ''),
       ...sources.map((s, i) => new Option(`${s.title} (${s.films.length})`, String(i))));
     status('');
     showLoaded(file.name);
