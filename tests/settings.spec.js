@@ -150,5 +150,18 @@ test('a slow redraw after a change shows "Working…" until it is done', async (
   await page.locator('#cols-inc').click();
   await expect.poll(() => page.evaluate(() => window.workingShown)).toBe(true);
   await expect(page.locator('#working')).toBeHidden();
+
+  // Hiding films rebuilds every tile first: "Working…" must already be up while the old tiles are still there.
+  await page.evaluate(() => {
+    window.tilesWhenShown = null;
+    new MutationObserver(() => {
+      if (!document.getElementById('working').hidden && window.tilesWhenShown === null)
+        window.tilesWhenShown = document.querySelectorAll('#tiles .tile').length;
+    }).observe(document.getElementById('working'), { attributes: true });
+  });
+  await page.locator('#hide-missing').check();
+  await expect(tiles(page)).toHaveCount(0);
+  expect(await page.evaluate(() => window.tilesWhenShown)).toBe(600);
+  await expect(page.locator('#working')).toBeHidden();
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
 });

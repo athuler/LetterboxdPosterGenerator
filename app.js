@@ -131,6 +131,13 @@ function scheduleRender(fromUser = false) {
     frame = requestAnimationFrame(() => { frame = requestAnimationFrame(timedRender); }); // a frame to paint it first
   } else frame = requestAnimationFrame(timedRender);
 }
+// For changes that rebuild every tile before redrawing (hiding films, sorting, switching lists): that rebuild
+// blocks too, so when redraws have been slow, show "Working…" and let it paint before doing any of it.
+function withWorking(fn) {
+  if (lastRenderMs <= SLOW_MS) return fn();
+  $('working').hidden = false; // the redraw that follows hides it again
+  requestAnimationFrame(() => requestAnimationFrame(fn));
+}
 function timedRender() {
   frame = 0;
   const t = performance.now();
@@ -816,7 +823,7 @@ document.addEventListener('drop', e => {
   e.preventDefault();
   openZip(e.dataTransfer.files[0]);
 });
-$('source').onchange = pickSource;
+$('source').onchange = () => withWorking(pickSource);
 for (const id of ['title', 'size', 'cols', 'cap-title', 'cap-year', 'cap-rating', 'title-on', 'fg-auto', 'title-wrap', 'cap-wrap', 'foot-on', ...STYLE]) {
   $(id).addEventListener('input', () => { scheduleRender(true); saveState(); });
 }
@@ -856,7 +863,7 @@ picker('border', (b, v, s) => paintThumb(b, { ...s, border: v }, b.title.replace
 $('style').addEventListener('toggle', () => scheduleRender());
 $('size').addEventListener('change', autoCols); // a new page shape gets the best column count
 $('cols-auto').onclick = autoCols;
-$('hide-missing').onchange = update;
+$('hide-missing').onchange = () => withWorking(update);
 $('clear').onclick = () => { films = []; update(); };
 $('unload').onclick = unloadZip;
 const stepCols = d => {
@@ -865,10 +872,10 @@ const stepCols = d => {
 };
 $('cols-dec').onclick = () => stepCols(-1);
 $('cols-inc').onclick = () => stepCols(1);
-$('sort').onchange = () => {
+$('sort').onchange = () => withWorking(() => {
   if ($('sort').value === 'shuffle') for (const f of films) f.rand = Math.random(); // re-pick to reshuffle
   update();
-};
+});
 $('search').oninput = e => {
   clearTimeout(searchTimer);
   const q = e.target.value.trim();
