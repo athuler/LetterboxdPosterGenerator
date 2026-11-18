@@ -1,6 +1,6 @@
 # Letterboxd Film Poster Generator
 
-[![Letterboxd Poster Generator: turn your Letterboxd lists into a poster to print or share. A wall of film posters behind the title and the site address, postergenerator.andreithuler.com](docs/banner.jpg)](https://postergenerator.andreithuler.com)
+[![Letterboxd Film Poster Generator: turn your Letterboxd lists into a poster to print or share. A wall of film posters behind the title and the site address, postergenerator.andreithuler.com](docs/banner.jpg)](https://postergenerator.andreithuler.com)
 
 <p align="center">
   <a href="https://ko-fi.com/andreithuler"><img src="https://img.shields.io/badge/Support_on-Ko--fi-FF5E5B?logo=ko-fi&logoColor=white&style=for-the-badge" alt="Support on Ko-fi"></a>

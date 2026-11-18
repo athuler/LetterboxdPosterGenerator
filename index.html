@@ -3,7 +3,45 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Letterboxd Poster Generator</title>
+<title>Letterboxd Film Poster Generator: printable list posters</title>
+<meta name="description" content="Turn any Letterboxd list into a film poster to print or share. Free, no account, and your data stays in your browser. Download a PNG or a print-ready PDF.">
+<link rel="canonical" href="https://postergenerator.andreithuler.com/">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta name="theme-color" content="#f6f6f4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14181c" media="(prefers-color-scheme: dark)">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Letterboxd Film Poster Generator">
+<meta property="og:title" content="Letterboxd Film Poster Generator">
+<meta property="og:description" content="Turn any Letterboxd list into a film poster to print or share. Free, no account, and your data stays in your browser. Download a PNG or a print-ready PDF.">
+<meta property="og:url" content="https://postergenerator.andreithuler.com/">
+<meta property="og:image" content="https://postergenerator.andreithuler.com/docs/banner.jpg">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="640">
+<meta property="og:image:alt" content="A wall of film posters behind the words Letterboxd Film Poster Generator">
+<meta name="twitter:card" content="summary_large_image">
+<!-- Structured data for search engines. The FAQ part is built from the #faq dialog (end of the page). -->
+<script type="application/ld+json">
+{
+ "@context": "https://schema.org",
+ "@type": "WebApplication",
+ "name": "Letterboxd Film Poster Generator",
+ "url": "https://postergenerator.andreithuler.com/",
+ "description": "Turn any Letterboxd list into a film poster to print or share. Free, no account, and your data stays in your browser. Download a PNG or a print-ready PDF.",
+ "applicationCategory": "DesignApplication",
+ "operatingSystem": "Any",
+ "offers": {
+  "@type": "Offer",
+  "price": "0",
+  "priceCurrency": "USD"
+ },
+ "author": {
+  "@type": "Person",
+  "name": "Andrei Thüler",
+  "url": "https://andreithuler.com"
+ },
+ "image": "https://postergenerator.andreithuler.com/docs/banner.jpg"
+}
+</script>
 <style>
   :root { --bg: #f6f6f4; --panel: #fff; --fg: #1b1b1b; --muted: #666; --line: #ddd; --accent: #00a35c; }
   @media (prefers-color-scheme: dark) {
@@ -147,6 +185,9 @@
   dialog { width: min(460px, calc(100vw - 32px)); padding: 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--fg); }
   dialog::backdrop { background: rgba(0,0,0,.5); }
   dialog h2 { margin: 0 0 12px; font-size: 18px; }
+  #faq { width: min(620px, calc(100vw - 32px)); }
+  #faq h3 { margin: 16px 0 4px; font-size: 15px; }
+  #faq p { margin: 0; color: var(--muted); }
   #dl-form { display: grid; gap: 12px; }
   .seg { display: flex; }
   .seg label { flex: 1; display: block; text-align: center; padding: 7px; border: 1px solid var(--line); cursor: pointer; }
@@ -182,8 +223,9 @@
 <script type="module" src="app.js" onerror="unrestore()"></script>
 </head>
 <body>
-<header><h1>Letterboxd Poster Generator</h1>
-  <nav class="support" aria-label="Support this project">
+<header><h1>Letterboxd Film Poster Generator</h1>
+  <nav class="support" aria-label="Help and support">
+    <a class="btn" href="#faq">FAQ</a>
     <a class="btn" href="https://ko-fi.com/andreithuler" target="_blank" rel="noopener">☕ Support on Ko-fi</a>
     <a class="btn" href="https://github.com/sponsors/athuler" target="_blank" rel="noopener">♥ Sponsor on GitHub</a>
   </nav>
@@ -383,9 +425,30 @@
     </div>
   </form>
 </dialog>
+<dialog id="faq" aria-labelledby="faq-title">
+  <h2 id="faq-title">Frequently asked questions</h2>
+  <h3>What does Letterboxd Film Poster Generator do?</h3>
+  <p>It turns any of your Letterboxd lists into a poster: a grid of film posters with a title and captions, ready to print, set as a wallpaper or share.</p>
+  <h3>How do I get my Letterboxd data?</h3>
+  <p>Export it at <a href="https://letterboxd.com/data/export/" target="_blank" rel="noopener">letterboxd.com/data/export</a> and you&#x27;ll get a .zip file. Drop that file on this page.</p>
+  <h3>Which lists can I use?</h3>
+  <p>Any of your Letterboxd lists, plus your Watchlist, Watched films and Ratings. You can also start empty and add films by searching.</p>
+  <h3>Is it free? Do I need an account?</h3>
+  <p>It&#x27;s free, and you don&#x27;t need an account here. You only need a Letterboxd account to export your data.</p>
+  <h3>Is my data private?</h3>
+  <p>Yes. Your export is read in your browser and never uploaded. Your settings and recent exports are saved in this browser only.</p>
+  <h3>Can I print my poster?</h3>
+  <p>Yes. Pick a paper size (A4 to A0, Letter or 11×17) and download a print-ready PDF at up to 300 dpi, or a PNG.</p>
+  <h3>Why is a film missing its poster?</h3>
+  <p>Posters come from TMDB. When TMDB has no match for a film, it&#x27;s shown as its title instead. Turn on Hide no-poster to leave those films out.</p>
+  <h3>Can I share my poster?</h3>
+  <p>Yes. Click Share… to send it to your phone&#x27;s share menu, or copy it and post it to X, Bluesky, Threads, Facebook or Reddit.</p>
+  <div class="dl-actions"><button id="faq-close" type="button">Close</button></div>
+</dialog>
 <footer>
   <p class="support">
     <span>Made by <a href="https://andreithuler.com" target="_blank" rel="noopener">Andrei Thüler</a>
+    · <a href="#faq">FAQ</a>
     · <a href="https://github.com/athuler/LetterboxdPosterGenerator/issues" target="_blank" rel="noopener">Send feedback</a></span>
     <!-- On narrow screens the support buttons live here instead of the header. -->
     <a class="btn narrow" href="https://ko-fi.com/andreithuler" target="_blank" rel="noopener">☕ Support on Ko-fi</a>
@@ -393,5 +456,21 @@
   </p>
   Posters from <a href="https://www.themoviedb.org/" target="_blank" rel="noopener">TMDB</a> API. Not affiliated with, endorsed by, or certified by TMDB or Letterboxd.
 </footer>
+<script>
+// The FAQ works without app.js. Its links point at #faq, so /#faq opens it straight away.
+// Its structured data is built from the dialog, so each question is written once.
+(() => {
+  const faq = document.getElementById('faq');
+  for (const a of document.querySelectorAll('a[href="#faq"]')) a.onclick = e => { e.preventDefault(); faq.showModal(); };
+  document.getElementById('faq-close').onclick = () => faq.close();
+  if (location.hash === '#faq') faq.showModal();
+  const ld = document.createElement('script');
+  ld.type = 'application/ld+json';
+  ld.textContent = JSON.stringify({ '@context': 'https://schema.org', '@type': 'FAQPage',
+    mainEntity: [...faq.querySelectorAll('h3')].map(h => ({ '@type': 'Question', name: h.textContent,
+      acceptedAnswer: { '@type': 'Answer', text: h.nextElementSibling.textContent } })) });
+  document.head.append(ld);
+})();
+</script>
 </body>
 </html>
