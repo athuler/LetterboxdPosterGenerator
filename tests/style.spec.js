@@ -124,6 +124,8 @@ test('caption size scales the captions and the space for them', async ({ page })
   const [, small] = await canvasSize(page);
   expect(big).toBeGreaterThan(base);
   expect(small).toBeLessThan(base);
+  await page.locator('#cap-size').fill('0.3'); // the smallest setting
+  expect((await canvasSize(page))[1]).toBeLessThan(small);
 });
 
 test('fonts change how the title and captions are drawn', async ({ page }) => {
