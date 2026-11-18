@@ -30,13 +30,16 @@ test('presets set every style control in one click', async ({ page }) => {
   await expect(page.locator('#fg')).toHaveValue('#2b2620');
   await expect(page.locator('#title-font')).toHaveValue('serif');
   await expect(page.locator('#border')).toHaveValue('double');
+  await expect(page.locator('#foot-offset')).toHaveValue('60'); // clear of the double line
   expect(near(await pixel(page, 5, 5), hexRgb('#f4efe6'))).toBe(true);
 
   await page.getByRole('button', { name: 'Cinema style' }).click();
   await expect(page.locator('#bg-style')).toHaveValue('gradient');
   await expect(page.locator('#border')).toHaveValue('film');
 
+  await expect(page.locator('#foot-offset')).toHaveValue('36'); // film sprockets run down the sides only: the footer sits lower
   await page.getByRole('button', { name: 'Letterboxd style' }).click();
+  await expect(page.locator('#foot-offset')).toHaveValue('36'); // no border: the footer sits lower
   await expect(page.locator('#bg')).toHaveValue('#14181c');
   await expect(page.locator('#fg-auto')).toBeChecked();
   expect(near(await pixel(page, 5, 5), hexRgb('#14181c'))).toBe(true);
@@ -222,4 +225,40 @@ test('the poster title and the captions each have their own Wrap toggle', async 
   await customise(page);
   for (const id of ['title-wrap', 'cap-wrap']) await page.locator(`#${id}`).uncheck();
   expect((await canvasSize(page))[1]).toBe(cut);
+});
+
+test('a footer line is on by default, can be changed, raised clear of a border, or turned off', async ({ page }) => {
+  await pickList(page);
+  await page.locator('#bg').fill('#000000');
+  await expect(page.locator('#foot-text')).toHaveValue('Made with postergenerator.andreithuler.com');
+  // Ink in a band across the middle of the page, `from`..`to` units above the bottom edge.
+  const ink = (from, to) => page.evaluate(([from, to]) => {
+    const c = document.getElementById('poster');
+    const d = c.getContext('2d').getImageData(500, c.height - to, 500, to - from).data;
+    let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] > 100) n++;
+    return n;
+  }, [from, to]);
+  await nextFrame(page);
+  expect(await ink(60, 82)).toBeGreaterThan(50); // default: its bottom sits 60 units up
+  const [, base] = await canvasSize(page);
+
+  await page.locator('#foot-offset').fill('150');
+  const [, raised] = await canvasSize(page);
+  expect(raised - base).toBe(90); // the grid moves up to make room
+  await nextFrame(page);
+  expect(await ink(60, 82)).toBe(0);
+  expect(await ink(150, 172)).toBeGreaterThan(50);
+
+  await page.locator('#foot-text').fill('Hello');
+  await waitForSave(page, s => s['foot-text'] === 'Hello' && s['foot-offset'] === '150');
+  await page.locator('#foot-on').uncheck();
+  await expect(page.locator('#foot-text')).toBeDisabled();
+  const [, none] = await canvasSize(page);
+  expect(none).toBe(base - 24); // no footer: back to the usual bottom margin
+  await nextFrame(page);
+  expect(await ink(10, 68)).toBe(0); // the bottom margin is empty
+  await waitForSave(page, s => s.checks['foot-on'] === false);
+  await page.reload();
+  await expect(page.locator('#foot-on')).not.toBeChecked();
+  await expect(page.locator('#foot-text')).toHaveValue('Hello');
 });

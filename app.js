@@ -116,7 +116,7 @@ function posterImage(path, px) {
 
 // ---------- Rendering ----------
 // The gap scales with the poster width so any number of columns fits the fixed poster width.
-const W = 1500, PAD = 70, GAP_RATIO = 0.08;
+const W = 1500, PAD = 70, GAP_RATIO = 0.08, FOOT_SIZE = 22;
 // A redraw of a big poster can block the page for a while on slower devices. For changes the user makes,
 // when redraws have been slow, show "Working…" and let it paint before redrawing. Its spinner is a CSS
 // transform animation, which the browser keeps turning even while the page itself is busy.
@@ -161,12 +161,12 @@ const font = key => (FONTS[key] || FONTS.sans)[1];
 
 // One-click looks; every value can be tweaked afterwards. Keys match the Style control ids.
 const PRESETS = {
-  Letterboxd: { 'bg-style': 'solid', bg: '#14181c', bg2: '#2c3440', 'fg-auto': true, 'title-font': 'sans', 'title-size': 76, 'cap-font': 'sans', 'cap-size': 1, border: 'none' },
-  Paper: { 'bg-style': 'solid', bg: '#f4efe6', bg2: '#e6dccb', 'fg-auto': false, fg: '#2b2620', 'title-font': 'serif', 'title-size': 84, 'cap-font': 'serif', 'cap-size': 1, border: 'double' },
-  Cinema: { 'bg-style': 'gradient', bg: '#120607', bg2: '#4a0f14', 'fg-auto': false, fg: '#f3e6c8', 'title-font': 'condensed', 'title-size': 100, 'cap-font': 'condensed', 'cap-size': 1.05, border: 'film' },
-  Midnight: { 'bg-style': 'spotlight', bg: '#070b1c', bg2: '#2a3a78', 'fg-auto': false, fg: '#e8ecff', 'title-font': 'sans', 'title-size': 80, 'cap-font': 'sans', 'cap-size': 1, border: 'corners' },
-  Garden: { 'bg-style': 'dots', bg: '#fdf3f2', bg2: '#f2b8c6', 'fg-auto': false, fg: '#6b2e3f', 'title-font': 'rounded', 'title-size': 84, 'cap-font': 'rounded', 'cap-size': 1, border: 'flowers' },
-  Mono: { 'bg-style': 'grid', bg: '#ffffff', bg2: '#e4e4e4', 'fg-auto': false, fg: '#111111', 'title-font': 'mono', 'title-size': 70, 'cap-font': 'mono', 'cap-size': 0.95, border: 'line' },
+  Letterboxd: { 'bg-style': 'solid', bg: '#14181c', bg2: '#2c3440', 'fg-auto': true, 'title-font': 'sans', 'title-size': 76, 'cap-font': 'sans', 'cap-size': 1, border: 'none', 'foot-offset': 36 },
+  Paper: { 'bg-style': 'solid', bg: '#f4efe6', bg2: '#e6dccb', 'fg-auto': false, fg: '#2b2620', 'title-font': 'serif', 'title-size': 84, 'cap-font': 'serif', 'cap-size': 1, border: 'double', 'foot-offset': 60 },
+  Cinema: { 'bg-style': 'gradient', bg: '#120607', bg2: '#4a0f14', 'fg-auto': false, fg: '#f3e6c8', 'title-font': 'condensed', 'title-size': 100, 'cap-font': 'condensed', 'cap-size': 1.05, border: 'film', 'foot-offset': 36 },
+  Midnight: { 'bg-style': 'spotlight', bg: '#070b1c', bg2: '#2a3a78', 'fg-auto': false, fg: '#e8ecff', 'title-font': 'sans', 'title-size': 80, 'cap-font': 'sans', 'cap-size': 1, border: 'corners', 'foot-offset': 60 },
+  Garden: { 'bg-style': 'dots', bg: '#fdf3f2', bg2: '#f2b8c6', 'fg-auto': false, fg: '#6b2e3f', 'title-font': 'rounded', 'title-size': 84, 'cap-font': 'rounded', 'cap-size': 1, border: 'flowers', 'foot-offset': 60 },
+  Mono: { 'bg-style': 'grid', bg: '#ffffff', bg2: '#e4e4e4', 'fg-auto': false, fg: '#111111', 'title-font': 'mono', 'title-size': 70, 'cap-font': 'mono', 'cap-size': 0.95, border: 'line', 'foot-offset': 60 },
 };
 
 function drawBackground(c, s, H, w = W) {
@@ -308,6 +308,11 @@ function layout(colsArg) {
   }
   const titleLines = titleMemo.lines;
   const headH = title ? style.titleSize * (1 + 1.15 * (titleLines.length - 1)) + 74 : 0; // 150 for one line at the default size
+  // Footer line: its bottom sits footOffset above the page edge. Room is kept below the grid for it,
+  // beyond the bottom margin it already overlaps (a raised footer clears a border drawn in that margin).
+  const foot = $('foot-on').checked ? $('foot-text').value.trim() : '';
+  const footOffset = Number($('foot-offset').value) || 60;
+  const footH = foot ? Math.max(0, footOffset + FOOT_SIZE + 12 - PAD) : 0;
   const capSizeFor = tw => Math.max(11, Math.min(26, tw / 10)) * style.capScale;
   const capFor = tw => lines ? capSizeFor(tw) * (0.4 + 1.2 * lines) : 0;
 
@@ -317,8 +322,8 @@ function layout(colsArg) {
     // Tiles fill the width; on a fixed-size page they shrink until the grid also fits the height.
     // (Captions have a minimum size, so one proportional step can undershoot: repeat a few times.)
     let tileW = (W - 2 * PAD) / (cols + (cols - 1) * GAP_RATIO);
-    const H = ratio ? W * ratio : 2 * PAD + headH + gridH(tileW);
-    const availH = H - 2 * PAD - headH;
+    const H = ratio ? W * ratio : 2 * PAD + headH + gridH(tileW) + footH;
+    const availH = H - 2 * PAD - headH - footH;
     for (let k = 0; k < 5 && gridH(tileW) > availH; k++) tileW *= availH / gridH(tileW);
     return { cols, tileW, H, availH, gridH: gridH(tileW) };
   }
@@ -335,7 +340,7 @@ function layout(colsArg) {
   const at = i => [x0 + (i % cols) * (tileW + gap), y0 + Math.floor(i / cols) * (tileH + capH + gap)];
   // The smallest text on the poster, in poster units (0 = none): drives the download recommendations.
   const minText = !n ? 0 : line2 ? capSize * 0.9 : cap.title ? capSize : 0;
-  return { list, cols, title, titleLines, cap, wrap, line2, style, fg: style.fg, ratio, headH, H, availH, tileW, tileH, capSize, minText, at };
+  return { list, cols, title, titleLines, foot, footOffset, cap, wrap, line2, style, fg: style.fg, ratio, headH, H, availH, tileW, tileH, capSize, minText, at };
 }
 
 // Auto text colour reads against the background's average tone.
@@ -422,6 +427,11 @@ function draw(c, L, scale) {
   c.fillStyle = L.fg; c.textAlign = 'center'; c.textBaseline = 'top';
   c.font = `bold ${s.titleSize}px ${s.titleFont}`;
   L.titleLines.forEach((l, i) => c.fillText(l, W / 2, PAD + i * s.titleSize * 1.15));
+  if (L.foot) {
+    c.font = `${FOOT_SIZE}px ${s.capFont}`; c.globalAlpha = 0.6; c.textBaseline = 'bottom';
+    c.fillText(fit(c, L.foot, W - 2 * PAD), W / 2, L.H - L.footOffset);
+    c.globalAlpha = 1; c.textBaseline = 'top';
+  }
   if (!L.list.length) {
     c.font = `36px ${s.capFont}`; c.globalAlpha = 0.6;
     c.fillText(films.length ? 'No films with posters' : 'Drop your Letterboxd export or add films',
@@ -472,6 +482,7 @@ function render() {
   if ($('fg-auto').checked) $('fg').value = L.fg;
   $('bg2').disabled = L.style.bgStyle === 'solid' && L.style.border !== 'flowers';
   for (const id of ['title-font', 'title-size', 'title-wrap']) $(id).disabled = !$('title-on').checked;
+  for (const id of ['foot-text', 'foot-offset']) $(id).disabled = !$('foot-on').checked;
   syncPickers(L.style);
 
   // Line the editing overlay up with the drawn posters, in % so it follows the canvas's CSS size.
@@ -573,9 +584,9 @@ function update() { applySort(); resolvePosters(); renderTiles(); scheduleRender
 
 // ---------- Persistence: settings + film list in localStorage, recent zips in IndexedDB ----------
 // Everything stays in this browser. Storage can be blocked (private windows), so every access is guarded.
-const STYLE = ['bg-style', 'bg', 'bg2', 'fg', 'title-font', 'title-size', 'cap-font', 'cap-size', 'np-size', 'border'];
+const STYLE = ['bg-style', 'bg', 'bg2', 'fg', 'title-font', 'title-size', 'cap-font', 'cap-size', 'np-size', 'border', 'foot-text', 'foot-offset'];
 const SETTINGS = ['title', 'size', 'cols', 'sort', ...STYLE];
-const CHECKS = ['cap-title', 'cap-year', 'cap-rating', 'hide-missing', 'fg-auto', 'title-on', 'title-wrap', 'cap-wrap'];
+const CHECKS = ['cap-title', 'cap-year', 'cap-rating', 'hide-missing', 'fg-auto', 'title-on', 'title-wrap', 'cap-wrap', 'foot-on'];
 const MAX_RECENT = 3;
 let currentZipId = null;
 let saveTimer;
@@ -799,7 +810,7 @@ document.addEventListener('drop', e => {
   openZip(e.dataTransfer.files[0]);
 });
 $('source').onchange = pickSource;
-for (const id of ['title', 'size', 'cols', 'cap-title', 'cap-year', 'cap-rating', 'title-on', 'fg-auto', 'title-wrap', 'cap-wrap', ...STYLE]) {
+for (const id of ['title', 'size', 'cols', 'cap-title', 'cap-year', 'cap-rating', 'title-on', 'fg-auto', 'title-wrap', 'cap-wrap', 'foot-on', ...STYLE]) {
   $(id).addEventListener('input', () => { scheduleRender(true); saveState(); });
 }
 $('fg').addEventListener('input', () => { $('fg-auto').checked = false; }); // picking a colour turns Auto off

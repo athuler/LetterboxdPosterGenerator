@@ -28,12 +28,12 @@
   @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
   /* min-width: 0 lets grid columns shrink below their content (e.g. a select sized to a very long list name). */
   section { min-width: 0; }
-  input[type=text], input[type=search], select { width: 100%; min-width: 0; text-overflow: ellipsis; }
+  input:not([type]), input[type=text], input[type=search], select { width: 100%; min-width: 0; text-overflow: ellipsis; }
   section { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
   .controls { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
   label { display: grid; gap: 4px; }
   input, select, button { font: inherit; color: inherit; }
-  input[type=text], input[type=search], input[type=number], input[type=color], select { padding: 7px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); }
+  input:not([type]), input[type=text], input[type=search], input[type=number], input[type=color], select { padding: 7px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); }
   .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
   .controls h2 { margin: 6px 0 -4px; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
   .controls h2:first-of-type { margin-top: 0; }
@@ -302,6 +302,14 @@
       <div class="opt" role="group" aria-label="Films without a poster">
         <span class="muted">Films without a poster</span>
         <div class="row size"><small>A</small><input id="np-size" type="range" min="0.5" max="2" step="0.05" value="1" aria-label="Text size on films without a poster"><big>A</big></div>
+      </div>
+      <div class="opt" role="group" aria-label="Poster footer">
+        <div class="row">
+          <label class="pill"><input id="foot-on" type="checkbox" checked> Poster footer</label>
+          <input id="foot-text" class="grow" value="Made with postergenerator.andreithuler.com" aria-label="Footer text">
+        </div>
+        <div class="row size" title="Distance from the bottom of the poster: raise it to clear a border">
+          <span aria-hidden="true">⤓</span><input id="foot-offset" type="range" min="10" max="200" step="2" value="60" aria-label="Footer distance from the bottom"><span aria-hidden="true">⤒</span></div>
       </div>
     </details>
   </section>
