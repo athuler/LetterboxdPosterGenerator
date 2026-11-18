@@ -6,8 +6,10 @@ Turn your Letterboxd lists into a poster: a grid of film posters with a title an
 
 **Use it at <https://postergenerator.andreithuler.com>**. It's free, needs no account, and your data never leaves your browser.
 
-[![Support on Ko-fi](https://img.shields.io/badge/Support_on-Ko--fi-FF5E5B?logo=ko-fi&logoColor=white&style=for-the-badge)](https://ko-fi.com/andreithuler)
-[![Sponsor on GitHub](https://img.shields.io/badge/Sponsor_on-GitHub-EA4AAA?logo=githubsponsors&logoColor=white&style=for-the-badge)](https://github.com/sponsors/athuler)
+<p align="center">
+  <a href="https://ko-fi.com/andreithuler"><img src="https://img.shields.io/badge/Support_on-Ko--fi-FF5E5B?logo=ko-fi&logoColor=white&style=for-the-badge" alt="Support on Ko-fi"></a>
+  <a href="https://github.com/sponsors/athuler"><img src="https://img.shields.io/badge/Sponsor_on-GitHub-EA4AAA?logo=githubsponsors&logoColor=white&style=for-the-badge" alt="Sponsor on GitHub"></a>
+</p>
 
 [![The app with the Letterboxd Top 250 as a poster](docs/app.jpg)](https://postergenerator.andreithuler.com)
 
@@ -60,8 +62,10 @@ Found a bug or have an idea? [Open an issue](https://github.com/athuler/Letterbo
 
 If you enjoy it, you can support it on [Ko-fi](https://ko-fi.com/andreithuler) or [GitHub Sponsors](https://github.com/sponsors/athuler):
 
-[![Support on Ko-fi](https://img.shields.io/badge/Support_on-Ko--fi-FF5E5B?logo=ko-fi&logoColor=white&style=for-the-badge)](https://ko-fi.com/andreithuler)
-[![Sponsor on GitHub](https://img.shields.io/badge/Sponsor_on-GitHub-EA4AAA?logo=githubsponsors&logoColor=white&style=for-the-badge)](https://github.com/sponsors/athuler)
+<p align="center">
+  <a href="https://ko-fi.com/andreithuler"><img src="https://img.shields.io/badge/Support_on-Ko--fi-FF5E5B?logo=ko-fi&logoColor=white&style=for-the-badge" alt="Support on Ko-fi"></a>
+  <a href="https://github.com/sponsors/athuler"><img src="https://img.shields.io/badge/Sponsor_on-GitHub-EA4AAA?logo=githubsponsors&logoColor=white&style=for-the-badge" alt="Sponsor on GitHub"></a>
+</p>
 
 ---
 
