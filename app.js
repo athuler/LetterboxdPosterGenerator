@@ -609,7 +609,7 @@ function unloadZip() {
   sources = [];
   currentZipId = null;
   restoringSource = undefined;
-  $('source').replaceChildren(new Option('Start empty', ''));
+  $('source').replaceChildren(new Option('Pick a list, or add films yourself', ''));
   $('file').value = ''; // so choosing the same file again still fires "change"
   showLoaded(null);
   renderRecent();
@@ -661,7 +661,7 @@ async function loadZip(file, restoreSource) {
     }
     if (!found.length) { status('No Letterboxd lists found in that zip.'); return false; }
     sources = found.sort((a, b) => a.order - b.order || a.title.localeCompare(b.title));
-    $('source').replaceChildren(new Option('Start empty', ''),
+    $('source').replaceChildren(new Option('Pick a list, or add films yourself', ''),
       ...sources.map((s, i) => new Option(`${s.title} (${s.films.length})`, String(i))));
     status('');
     showLoaded(file.name);

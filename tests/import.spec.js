@@ -19,7 +19,7 @@ test('dropping an export lists its sources and loads the first', async ({ page }
   await expect(page.locator('#lists-label')).toHaveText('Lists (4)');
   // Watched/watchlist/ratings first, then lists; deleted lists and other CSVs are ignored.
   await expect(page.locator('#source option')).toHaveText([
-    'Start empty', 'Ratings (3)', 'Watched (4)', 'Watchlist (2)', 'Favourites, ranked (5)',
+    'Pick a list, or add films yourself', 'Ratings (3)', 'Watched (4)', 'Watchlist (2)', 'Favourites, ranked (5)',
   ]);
   await expect(page.locator('#source')).toHaveValue('0');
   await expect(page.locator('#title')).toHaveValue('Ratings');

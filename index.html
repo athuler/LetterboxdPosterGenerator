@@ -29,6 +29,7 @@
   .controls h2 { margin: 6px 0 -4px; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
   .controls h2:first-of-type { margin-top: 0; }
   .muted { color: var(--muted); font-size: 13px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .row select.grow { width: auto; flex: 1; }
   .spacer { flex: 1; }
   /* Visual pickers: buttons standing in for a hidden <select> (or presets). */
@@ -57,7 +58,9 @@
   /* A text box with its name inside, on the left. */
   label.field { display: flex; align-items: center; gap: 8px; padding-left: 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); }
   label.field svg { flex: none; color: var(--muted); }
-  label.field input, label.field select { flex: 1; border: 0; padding-left: 0; background: none; }
+  /* Same background as the box, not "none": the open dropdown list takes its colours from the select. */
+  label.field input, label.field select { flex: 1; border: 0; padding-left: 0; background: var(--bg); }
+  option { background: var(--bg); color: var(--fg); }
   label.field select:focus { outline: none; }
   .row .grow { flex: 1; min-width: 0; }
   /* A small uppercase label, matching the section headings. */
@@ -74,7 +77,8 @@
   button:disabled, input:disabled { opacity: .5; cursor: not-allowed; }
   #drop { display: block; border: 2px dashed var(--line); border-radius: 10px; padding: 18px; text-align: center; cursor: pointer; }
   #drop.over, body.over #drop { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
-  #status { color: var(--muted); min-height: 1.4em; margin: 0; }
+  #status { color: var(--muted); margin: 0; }
+  #status:empty { display: none; }
   #results { display: grid; gap: 4px; }
   #results button { display: flex; gap: 8px; align-items: center; text-align: left; }
   #results img { width: 30px; height: 45px; object-fit: cover; background: var(--line); }
@@ -153,8 +157,8 @@
     </div>
     <p id="status" role="status"></p>
 
-    <h2 id="lists-label">Lists</h2>
-    <select id="source" aria-labelledby="lists-label"><option value="">Start empty</option></select>
+    <label class="field" title="List"><svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" fill="currentColor"><circle cx="3.5" cy="5" r="1.6"/><circle cx="3.5" cy="10" r="1.6"/><circle cx="3.5" cy="15" r="1.6"/><rect x="7" y="4" width="11" height="2" rx="1"/><rect x="7" y="9" width="11" height="2" rx="1"/><rect x="7" y="14" width="11" height="2" rx="1"/></svg><span id="lists-label" class="sr-only">Lists</span>
+      <select id="source" aria-labelledby="lists-label"><option value="">Pick a list, or add films yourself</option></select></label>
     <label class="field" title="Poster title"><svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M3 3h14v3.5h-2.2V5.2H11.4v10.6h2.1V18H6.5v-2.2h2.1V5.2H5.2v1.3H3z" fill="currentColor"/></svg><input id="title" type="text" placeholder="Poster title" aria-label="Poster title"></label>
     <input id="search" type="search" placeholder="🔍 Add a film…" aria-label="Add a film" autocomplete="off">
     <div id="results"></div>
