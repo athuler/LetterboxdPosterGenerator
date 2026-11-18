@@ -947,7 +947,9 @@ $('download').onclick = () => {
   bpp = null;
   renderSizes();
   $('dl').showModal();
-  measureBpp().then(b => { bpp = b; if ($('dl').open) renderSizes(true); }, () => {});
+  delete $('dl-sizes').dataset.ready;
+  measureBpp().then(b => { bpp = b; if ($('dl').open) renderSizes(true); }, () => {})
+    .finally(() => { $('dl-sizes').dataset.ready = ''; }); // the rows are final now (tests wait for this)
 };
 $('dl-png').onchange = $('dl-pdf').onchange = () => renderSizes();
 $('dl-cancel').onclick = () => $('dl').close();

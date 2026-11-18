@@ -9,10 +9,10 @@ const pickList = async page => {
   await expect(tiles(page)).toHaveCount(5);
 };
 const rows = page => page.locator('#dl-sizes label');
-// Open the dialog and wait for the file-size estimates, which rebuild the rows once measured.
+// Open the dialog and wait until the file-size measurement has rebuilt the rows (or given up).
 const openDownload = async page => {
   await page.locator('#download').click();
-  await expect(rows(page).first()).toContainText(/~\d/);
+  await expect(page.locator('#dl-sizes[data-ready]')).toHaveCount(1);
 };
 
 // Sizes before "Recommended" warn about small captions; it and everything after don't.

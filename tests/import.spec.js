@@ -56,6 +56,7 @@ test('settings, the chosen list and edits come back after a reload', async ({ pa
   await page.locator('#bg').fill('#ffffff');
   await page.locator('#cap-rating').uncheck();
   await page.locator('#sort').selectOption('title');
+  await expect(page.locator('#missing-count')).toHaveText(/\(1\)/); // lookups done: the tiles won't be rebuilt mid-click
   await tiles(page).first().locator('button').click({ force: true }); // remove "Alien" (first by title)
   await waitForSave(page, s => s.title === 'My poster' && s.films.length === 4 && s.sort === 'title' && s.cols === '3');
 
