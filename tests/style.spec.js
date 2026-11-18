@@ -59,6 +59,7 @@ test('patterns draw the second colour over the background', async ({ page }) => 
   for (const style of ['dots', 'stripes', 'grid']) {
     await pick(page, 'bg-style', style);
     await page.locator('#bg2').fill('#ff0000');
+    await nextFrame(page);
     // Somewhere in the top margin is now red.
     const reds = await page.evaluate(() => {
       const d = document.getElementById('poster').getContext('2d').getImageData(0, 0, 200, 60).data;
@@ -194,4 +195,31 @@ test('the "Films without a poster" slider resizes their names and is saved', asy
   await waitForSave(page, s => s['np-size'] === '1.6');
   await page.reload();
   await expect(page.locator('#np-size')).toHaveValue('1.6');
+});
+
+test('the poster title and the captions each have their own Wrap toggle', async ({ page }) => {
+  await pickList(page);
+  await page.locator('#title').fill('A very long poster title that cannot possibly fit on one line of this poster');
+  const [, cut] = await canvasSize(page);
+  // A wrapped title adds at least one title line (76 units at the default size) to the fit-to-films poster.
+  await page.locator('#title-wrap').check();
+  const [, titleWrapped] = await canvasSize(page);
+  expect(titleWrapped).toBeGreaterThan(cut + 76);
+  // Wrapped captions add room for a second name line under every row, on top of that.
+  await page.locator('#cap-wrap').check();
+  const [, both] = await canvasSize(page);
+  expect(both).toBeGreaterThan(titleWrapped);
+  await page.locator('#title-wrap').uncheck();
+  const [, capsOnly] = await canvasSize(page);
+  expect(capsOnly).toBeGreaterThan(cut);
+  expect(capsOnly).toBeLessThan(both);
+  // Both are saved separately.
+  await page.locator('#title-wrap').check();
+  await waitForSave(page, s => s.checks['title-wrap'] === true && s.checks['cap-wrap'] === true);
+  await page.reload();
+  await expect(page.locator('#title-wrap')).toBeChecked();
+  await expect(page.locator('#cap-wrap')).toBeChecked();
+  await customise(page);
+  for (const id of ['title-wrap', 'cap-wrap']) await page.locator(`#${id}`).uncheck();
+  expect((await canvasSize(page))[1]).toBe(cut);
 });

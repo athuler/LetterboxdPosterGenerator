@@ -16,7 +16,9 @@ const MAX_AREA = 16e6, MAX_SIDE = 32000;
 let sources = [];   // [{ title, films }] from the dropped zip
 let films = [];     // the working list the poster is drawn from
 
-const status = msg => { $('status').textContent = msg; };
+// busy: show a spinner beside the message (for things that take a few seconds).
+const status = (msg, busy = false) => { $('status').textContent = msg; $('status').classList.toggle('busy', busy); };
+const spinner = () => Object.assign(document.createElement('span'), { className: 'spinner' });
 
 // ---------- TMDB: via the Worker proxy (holds the key), or directly with a local key ----------
 async function tmdb(params) {
@@ -90,7 +92,8 @@ function image(path, size) {
   if (!images.has(key)) {
     const img = new Image();
     img.crossOrigin = 'anonymous'; // keeps the canvas exportable
-    img.onload = img.onerror = scheduleRender;
+    img.onload = () => scheduleRender();
+    img.onerror = () => { img.failed = true; scheduleRender(); }; // drawn as text; not "still loading"
     img.src = IMG + size + path;
     images.set(key, img);
   }
@@ -113,8 +116,25 @@ function posterImage(path, px) {
 // ---------- Rendering ----------
 // The gap scales with the poster width so any number of columns fits the fixed poster width.
 const W = 1500, PAD = 70, GAP_RATIO = 0.08;
-let frame = 0;
-function scheduleRender() { if (!frame) frame = requestAnimationFrame(() => { frame = 0; render(); }); }
+// A redraw of a big poster can block the page for a while on slower devices. For changes the user makes,
+// when redraws have been slow, show "Working…" and let it paint before redrawing. Its spinner is a CSS
+// transform animation, which the browser keeps turning even while the page itself is busy.
+const SLOW_MS = 100;
+let frame = 0, lastRenderMs = 0;
+function scheduleRender(fromUser = false) {
+  if (frame) return;
+  if (fromUser === true && lastRenderMs > SLOW_MS) {
+    $('working').hidden = false;
+    frame = requestAnimationFrame(() => { frame = requestAnimationFrame(timedRender); }); // a frame to paint it first
+  } else frame = requestAnimationFrame(timedRender);
+}
+function timedRender() {
+  frame = 0;
+  const t = performance.now();
+  render();
+  lastRenderMs = performance.now() - t;
+  $('working').hidden = true;
+}
 
 const rgb = hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
 const hex = c => '#' + c.map(v => Math.round(v).toString(16).padStart(2, '0')).join('');
@@ -224,6 +244,18 @@ function fit(c, text, maxW) {
   while (text && c.measureText(text + '…').width > maxW) text = text.slice(0, -1);
   return text + '…';
 }
+// Word-wrap text to maxW (in the current font) over at most maxLines; the last line gets "…" if cut.
+function wrapText(c, text, maxW, maxLines) {
+  const lines = [];
+  for (const word of text.split(/\s+/).filter(Boolean)) {
+    const last = lines.length - 1;
+    if (last >= 0 && c.measureText(lines[last] + ' ' + word).width <= maxW) lines[last] += ' ' + word;
+    else lines.push(word);
+  }
+  const out = lines.slice(0, maxLines);
+  if (lines.length > maxLines) out[maxLines - 1] = fit(c, out[maxLines - 1] + ' ' + lines[maxLines] + '…', maxW);
+  return out.map(l => fit(c, l, maxW)); // a single word wider than the line still gets cut
+}
 const stars = r => '★'.repeat(Math.floor(r)) + (r % 1 ? '½' : '');
 
 function textTile(c, f, x, y, w, h, fg, family, scale = 1) {
@@ -259,10 +291,14 @@ function layout(colsArg) {
   const style = styleOf();
   const title = $('title-on').checked ? $('title').value.trim() : '';
   const cap = { title: $('cap-title').checked, year: $('cap-year').checked, rating: $('cap-rating').checked };
-  const line2 = cap.year || cap.rating; // year and rating share the second caption line
-  const lines = cap.title + line2;
+  const wrap = $('cap-wrap').checked; // film names under the posters
+  const line2 = cap.year || cap.rating; // year and rating share the line after the film's name
+  const nameLines = cap.title ? (wrap ? 2 : 1) : 0; // wrapped names get room for a second line
+  const lines = nameLines + line2;
   const ratio = Number($('size').value) || 0; // page height / width; 0 = grow to fit the films
-  const headH = title ? style.titleSize + 74 : 0; // 150 at the default title size
+  ctx.font = `bold ${style.titleSize}px ${style.titleFont}`; // measured in poster units, like the drawing
+  const titleLines = !title ? [] : $('title-wrap').checked ? wrapText(ctx, title, W - 2 * PAD, 3) : [fit(ctx, title, W - 2 * PAD)];
+  const headH = title ? style.titleSize * (1 + 1.15 * (titleLines.length - 1)) + 74 : 0; // 150 for one line at the default size
   const capSizeFor = tw => Math.max(11, Math.min(26, tw / 10)) * style.capScale;
   const capFor = tw => lines ? capSizeFor(tw) * (0.4 + 1.2 * lines) : 0;
 
@@ -290,7 +326,7 @@ function layout(colsArg) {
   const at = i => [x0 + (i % cols) * (tileW + gap), y0 + Math.floor(i / cols) * (tileH + capH + gap)];
   // The smallest text on the poster, in poster units (0 = none): drives the download recommendations.
   const minText = !n ? 0 : line2 ? capSize * 0.9 : cap.title ? capSize : 0;
-  return { list, cols, title, cap, line2, style, fg: style.fg, ratio, headH, H, availH, tileW, tileH, capSize, minText, at };
+  return { list, cols, title, titleLines, cap, wrap, line2, style, fg: style.fg, ratio, headH, H, availH, tileW, tileH, capSize, minText, at };
 }
 
 // Auto text colour reads against the background's average tone.
@@ -375,10 +411,8 @@ function draw(c, L, scale) {
   drawBackground(c, s, L.H);
   drawBorder(c, s, L.H);
   c.fillStyle = L.fg; c.textAlign = 'center'; c.textBaseline = 'top';
-  if (L.title) {
-    c.font = `bold ${s.titleSize}px ${s.titleFont}`;
-    c.fillText(fit(c, L.title, W - 2 * PAD), W / 2, PAD);
-  }
+  c.font = `bold ${s.titleSize}px ${s.titleFont}`;
+  L.titleLines.forEach((l, i) => c.fillText(l, W / 2, PAD + i * s.titleSize * 1.15));
   if (!L.list.length) {
     c.font = `36px ${s.capFont}`; c.globalAlpha = 0.6;
     c.fillText(films.length ? 'No films with posters' : 'Drop your Letterboxd export or add films',
@@ -395,8 +429,10 @@ function draw(c, L, scale) {
     let ty = y + tileH + capSize * 0.4;
     if (cap.title) {
       c.font = `600 ${capSize}px ${s.capFont}`;
-      c.fillText(fit(c, f.name, tileW), x + tileW / 2, ty);
-      ty += capSize * 1.2;
+      for (const l of L.wrap ? wrapText(c, f.name, tileW, 2) : [fit(c, f.name, tileW)]) {
+        c.fillText(l, x + tileW / 2, ty);
+        ty += capSize * 1.2;
+      }
     }
     if (L.line2) {
       c.font = `${capSize * 0.9}px ${s.capFont}`;
@@ -416,10 +452,19 @@ function render() {
   canvas.height = Math.floor(L.H * scale);
   draw(ctx, L, scale);
 
+  // Films still waiting for a TMDB lookup or their image.
+  const loading = L.list.filter(f => {
+    if (!f.poster) return f.poster === undefined; // null = TMDB has no poster: done
+    const img = posterImage(f.poster, L.tileW * scale);
+    return !ready(img) && !img.failed;
+  }).length;
+  $('loading').hidden = !loading;
+  $('loading-n').textContent = loading === 1 ? 'Loading 1 poster…' : `Loading ${loading} posters…`;
+
   // Keep the Style controls honest: show the automatic text colour, and the second colour only when used.
   if ($('fg-auto').checked) $('fg').value = L.fg;
   $('bg2').disabled = L.style.bgStyle === 'solid' && L.style.border !== 'flowers';
-  for (const id of ['title-font', 'title-size']) $(id).disabled = !$('title-on').checked;
+  for (const id of ['title-font', 'title-size', 'title-wrap']) $(id).disabled = !$('title-on').checked;
   syncPickers(L.style);
 
   // Line the editing overlay up with the drawn posters, in % so it follows the canvas's CSS size.
@@ -516,13 +561,13 @@ function renderTiles() {
   }));
 }
 
-function update() { applySort(); renderTiles(); resolvePosters(); scheduleRender(); saveState(); }
+function update() { applySort(); renderTiles(); resolvePosters(); scheduleRender(true); saveState(); }
 
 // ---------- Persistence: settings + film list in localStorage, recent zips in IndexedDB ----------
 // Everything stays in this browser. Storage can be blocked (private windows), so every access is guarded.
 const STYLE = ['bg-style', 'bg', 'bg2', 'fg', 'title-font', 'title-size', 'cap-font', 'cap-size', 'np-size', 'border'];
 const SETTINGS = ['title', 'size', 'cols', 'sort', ...STYLE];
-const CHECKS = ['cap-title', 'cap-year', 'cap-rating', 'hide-missing', 'fg-auto', 'title-on'];
+const CHECKS = ['cap-title', 'cap-year', 'cap-rating', 'hide-missing', 'fg-auto', 'title-on', 'title-wrap', 'cap-wrap'];
 const MAX_RECENT = 3;
 let currentZipId = null;
 let saveTimer;
@@ -636,14 +681,18 @@ async function restore() {
     films = Array.isArray(state.films) ? state.films : [];
     seq = films.reduce((m, f) => Math.max(m, f.order + 1, f.custom + 1), 0);
     currentZipId = state.zipId ?? null; // set before update() so its save keeps the link
-    if (currentZipId) restoringSource = state.source;
+    if (currentZipId) { restoringSource = state.source; $('source').replaceChildren(new Option('Loading lists…', '')); }
   }
   update();
   renderRecent();
   if (!currentZipId) return;
   let entry;
   try { entry = await zips('readonly', s => s.get(currentZipId)); } catch {}
-  if (!entry) { restoringSource = undefined; currentZipId = null; saveState(); return; } // zip was forgotten or storage cleared
+  if (!entry) { // zip was forgotten or storage cleared
+    restoringSource = undefined; currentZipId = null; saveState();
+    $('source').replaceChildren(new Option('Pick a list, or add films yourself', ''));
+    return;
+  }
   await loadZip(entry.file, state.source); // refills the Source menu without touching the restored films
   restoringSource = undefined;
 }
@@ -654,7 +703,7 @@ const LABELS = { watchlist: 'Watchlist', watched: 'Watched', ratings: 'Ratings' 
 // restoreSource: when restoring after a reload, select this source but keep the saved film list.
 // Returns true when the file was a readable Letterboxd export.
 async function loadZip(file, restoreSource) {
-  if (restoreSource === undefined) status(`Reading ${file.name}…`);
+  if (restoreSource === undefined) status(`Reading ${file.name}…`, true); // a reload shows "Restoring…" instead
   try {
     const zip = await JSZip.loadAsync(file);
     const entries = Object.values(zip.files).filter(e => !e.dir && !/(^|\/)deleted\//.test(e.name));
@@ -701,6 +750,8 @@ async function search(q) {
   const box = $('results');
   if (!q) return box.replaceChildren();
   if (!searchCache.has(q)) {
+    box.replaceChildren(Object.assign(document.createElement('p'), { className: 'hint' }));
+    box.firstChild.append(spinner(), ' Searching…');
     searchCache.set(q, limited(() => tmdb({ query: q }))
       .then(d => d.results.slice(0, 8))
       .catch(err => { searchCache.delete(q); throw err; }));
@@ -740,8 +791,8 @@ document.addEventListener('drop', e => {
   openZip(e.dataTransfer.files[0]);
 });
 $('source').onchange = pickSource;
-for (const id of ['title', 'size', 'cols', 'cap-title', 'cap-year', 'cap-rating', 'title-on', 'fg-auto', ...STYLE]) {
-  $(id).addEventListener('input', () => { scheduleRender(); saveState(); });
+for (const id of ['title', 'size', 'cols', 'cap-title', 'cap-year', 'cap-rating', 'title-on', 'fg-auto', 'title-wrap', 'cap-wrap', ...STYLE]) {
+  $(id).addEventListener('input', () => { scheduleRender(true); saveState(); });
 }
 $('fg').addEventListener('input', () => { $('fg-auto').checked = false; }); // picking a colour turns Auto off
 
@@ -763,7 +814,7 @@ $('presets').replaceChildren(...Object.entries(PRESETS).map(([name, p]) => {
     for (const [id, v] of Object.entries(p)) {
       if (typeof v === 'boolean') $(id).checked = v; else $(id).value = v;
     }
-    scheduleRender(); saveState();
+    scheduleRender(true); saveState();
   };
   return b;
 }));
@@ -776,7 +827,7 @@ picker('size', (b, v) => {
 });
 picker('bg-style', (b, v, s) => paintThumb(b, { ...s, bgStyle: v, border: 'none' }, b.title));
 picker('border', (b, v, s) => paintThumb(b, { ...s, border: v }, b.title.replace(' line', '').replace(' strip', '')));
-$('style').addEventListener('toggle', scheduleRender);
+$('style').addEventListener('toggle', () => scheduleRender());
 $('size').addEventListener('change', autoCols); // a new page shape gets the best column count
 $('cols-auto').onclick = autoCols;
 $('hide-missing').onchange = update;
@@ -971,7 +1022,7 @@ $('dl-form').onsubmit = async e => {
   const o = dlOpts[new FormData(e.target).get('dl-size')];
   if (!o) return;
   const go = $('dl-go'), name = ($('title').value.trim() || 'poster').replace(/[^\w-]+/g, '-');
-  go.disabled = true; go.textContent = 'Preparing…';
+  go.disabled = true; go.replaceChildren(spinner(), ' Preparing…');
   let c;
   try {
     c = await exportCanvas(o.px);
@@ -996,4 +1047,5 @@ $('dl-form').onsubmit = async e => {
 };
 
 if (LOCAL && !TMDB_API_KEY) status('Local dev: add your TMDB key in config.local.js (see README), or run the Worker on :8787.');
-restore();
+// The page starts as "Restoring your last session…" when there is one (see index.html); clear it when done.
+restore().finally(() => document.documentElement.classList.remove('restoring'));

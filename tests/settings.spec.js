@@ -1,5 +1,5 @@
 // Poster size, columns (−/+, Auto), captions, background and title.
-import { test, expect, pick, customise, dropZip, tiles, canvasSize, nextFrame } from './helpers.js';
+import { test, expect, pick, customise, dropZip, tiles, canvasSize, nextFrame, waitForSave } from './helpers.js';
 
 const pickList = async page => {
   await page.goto('/');
@@ -125,4 +125,30 @@ test('a title adds a header band', async ({ page }) => {
   await page.locator('#title').fill('Hello');
   const [, withTitle] = await canvasSize(page);
   expect(Math.abs(withTitle - without - 150)).toBeLessThanOrEqual(1); // 150 units, give or take rounding
+});
+
+test('a slow redraw after a change shows "Working…" until it is done', async ({ page }) => {
+  await page.goto('/');
+  await waitForSave(page); // the page's own first save must not overwrite the state set below
+  // A big poster: 600 films without posters (text tiles), restored from saved state.
+  await page.evaluate(() => {
+    const films = Array.from({ length: 600 }, (_, i) => ({ name: `Film number ${i}`, year: '2000', order: i, custom: i, poster: null }));
+    localStorage.setItem('state', JSON.stringify({ films, cols: '30', size: '', sort: 'list' }));
+  });
+  await page.reload();
+  await expect(tiles(page)).toHaveCount(600);
+  // Stand in for a slower device.
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 6 });
+  await page.locator('#cols-inc').click(); // one slow redraw, so the next change knows redraws are slow
+  await nextFrame(page);
+  await page.evaluate(() => {
+    window.workingShown = false;
+    new MutationObserver(() => { if (!document.getElementById('working').hidden) window.workingShown = true; })
+      .observe(document.getElementById('working'), { attributes: true });
+  });
+  await page.locator('#cols-inc').click();
+  await expect.poll(() => page.evaluate(() => window.workingShown)).toBe(true);
+  await expect(page.locator('#working')).toBeHidden();
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
 });

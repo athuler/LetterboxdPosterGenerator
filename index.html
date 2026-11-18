@@ -80,6 +80,20 @@
   #drop.over, body.over #drop { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
   #status { color: var(--muted); margin: 0; }
   #status:empty { display: none; }
+  #restoring { display: none; margin: 0; font-size: 15px; }
+  .restoring #restoring { display: block; }
+  .restoring #picker { display: none; }
+  /* Spinner for things that take a few seconds; holds still for people who prefer reduced motion. */
+  .spinner { display: inline-block; width: .9em; height: .9em; vertical-align: -.1em; border: 2px solid currentColor;
+    border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner, #status.busy::before { will-change: transform; } /* composited, so it keeps turning while the page is busy */
+  #working { position: fixed; bottom: 20px; left: 50%; translate: -50% 0; z-index: 10; display: flex; align-items: center; gap: 8px;
+    padding: 7px 14px; border-radius: 999px; background: var(--panel); color: var(--fg); box-shadow: 0 2px 12px rgba(0,0,0,.35); font-size: 14px; pointer-events: none; }
+  @media (prefers-reduced-motion: reduce) { .spinner { animation: none; opacity: .6; } }
+  #status.busy::before { content: ""; display: inline-block; width: .9em; height: .9em; margin-right: 6px; vertical-align: -.1em;
+    border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; }
+  @media (prefers-reduced-motion: reduce) { #status.busy::before { animation: none; } }
   #results { display: grid; gap: 4px; }
   #results button { display: flex; gap: 8px; align-items: center; text-align: left; }
   #results img { width: 30px; height: 45px; object-fit: cover; background: var(--line); }
@@ -135,12 +149,17 @@
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script>
+  // A saved session takes a moment to come back (a big export is re-read): say so from the first paint.
+  try { const s = JSON.parse(localStorage.getItem("state")); if (s && (s.zipId || s.films?.length)) document.documentElement.classList.add("restoring"); } catch {}
+</script>
 <script type="module" src="app.js"></script>
 </head>
 <body>
 <header><h1>Letterboxd Poster Generator</h1></header>
 <main>
   <section class="controls">
+    <p id="restoring" class="hint" role="status"><span class="spinner"></span> Restoring your last session…</p>
     <div id="picker">
       <label id="drop" for="file">
         Drop your Letterboxd export <b>.zip</b>
@@ -248,7 +267,8 @@
           <label class="pill"><input id="title-on" type="checkbox" checked> Poster title</label>
           <select id="title-font" aria-label="Title font" class="grow"></select>
         </div>
-        <div class="row size"><small>A</small><input id="title-size" type="range" min="40" max="150" step="2" value="76" aria-label="Title size"><big>A</big></div>
+        <div class="row size"><small>A</small><input id="title-size" type="range" min="40" max="150" step="2" value="76" aria-label="Title size"><big>A</big>
+          <label class="pill" title="Wrap a long poster title onto more lines instead of cutting it off"><input id="title-wrap" type="checkbox"> Wrap</label></div>
       </div>
       <div class="opt" role="group" aria-label="Captions">
         <div class="row">
@@ -260,7 +280,8 @@
         <div class="row">
           <select id="cap-font" aria-label="Caption font" class="grow"></select>
         </div>
-        <div class="row size"><small>A</small><input id="cap-size" type="range" min="0.6" max="1.8" step="0.05" value="1" aria-label="Caption size"><big>A</big></div>
+        <div class="row size"><small>A</small><input id="cap-size" type="range" min="0.6" max="1.8" step="0.05" value="1" aria-label="Caption size"><big>A</big>
+          <label class="pill" title="Wrap long movie titles onto a second line instead of cutting them off"><input id="cap-wrap" type="checkbox"> Wrap</label></div>
       </div>
       <div class="opt" role="group" aria-label="Films without a poster">
         <span class="muted">Films without a poster</span>
@@ -273,7 +294,9 @@
     <div id="stage">
       <canvas id="poster" aria-label="Poster preview"></canvas>
       <div id="tiles"></div>
+      <div id="working" role="status" hidden><span class="spinner"></span> Working…</div>
     </div>
+    <p id="loading" class="hint" role="status" hidden><span class="spinner"></span> <span id="loading-n"></span></p>
     <p class="hint">Drag to reorder · ✕ to remove</p>
     <button id="download" class="primary" type="button">Download…</button>
   </section>

@@ -140,3 +140,26 @@ test('a slow re-read of a big export after a reload does not lose the chosen lis
   await page.reload();
   await expect(page.locator('#source')).toHaveValue('3');
 });
+
+test('after a reload, "Restoring your last session…" shows instead of the drop zone until it is back', async ({ page }) => {
+  await expect(page.locator('#restoring')).toBeHidden(); // nothing saved yet
+  await dropZip(page);
+  await page.locator('#source').selectOption({ label: 'Favourites, ranked (5)' });
+  await waitForSave(page, s => s.source === '3');
+  // Re-reading the export takes a second, like a big one does.
+  await page.addInitScript(() => {
+    let jszip;
+    Object.defineProperty(window, 'JSZip', { configurable: true, get: () => jszip, set: v => {
+      const load = v.loadAsync.bind(v);
+      v.loadAsync = (...a) => new Promise(r => setTimeout(r, 1000)).then(() => load(...a));
+      jszip = v;
+    } });
+  });
+  await page.reload();
+  await expect(page.locator('#restoring')).toBeVisible();
+  await expect(page.locator('#drop')).toBeHidden();
+  await expect(page.locator('#source option')).toHaveText(['Loading lists…']);
+  await expect(page.locator('#loaded-name')).toHaveText('letterboxd-test-export.zip');
+  await expect(page.locator('#restoring')).toBeHidden();
+  await expect(page.locator('#source')).toHaveValue('3');
+});

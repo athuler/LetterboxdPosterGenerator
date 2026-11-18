@@ -153,3 +153,15 @@ test('a long name on a small no-poster tile stays inside the tile', async ({ pag
   }, i);
   expect(spill).toBe(0);
 });
+
+test('a loading line counts posters still on their way, and goes away when they arrive', async ({ page }) => {
+  // Hold every poster image until the test lets them through.
+  let release;
+  const gate = new Promise(r => { release = r; });
+  await page.route('https://image.tmdb.org/**', async r => { await gate; await r.fallback(); });
+  await pickList(page);
+  await expect(page.locator('#loading')).toBeVisible();
+  await expect(page.locator('#loading')).toHaveText('Loading 4 posters…'); // "Noposter Film" has none to load
+  release();
+  await expect(page.locator('#loading')).toBeHidden();
+});
