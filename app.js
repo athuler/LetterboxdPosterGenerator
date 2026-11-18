@@ -633,6 +633,7 @@ function pickSource() {
   seq = films.length;
   $('title').value = s ? s.title : '';
   update();
+  autoCols(); // a new list gets the best column count
 }
 
 // ---------- Search / add ----------

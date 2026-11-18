@@ -59,6 +59,7 @@ test('keyboard: arrow keys move a poster into a custom order, Delete removes it'
 
 test('dragging a poster onto another moves it there', async ({ page }) => {
   await pickList(page);
+  await page.locator('#cols').fill('5'); // one row, so both tiles are on screen
   await tiles(page).nth(0).dragTo(tiles(page).nth(3));
   await expect(page.locator('#sort')).toHaveValue('custom');
   expect(await names(page)).toEqual(['Alien', 'Noposter Film', 'Moon', 'Zodiac', 'Crouching Tiger, Hidden Dragon']);

@@ -119,7 +119,8 @@ export async function canvasSize(page) {
 export const nextFrame = page => page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
 
 // The preview's colour at the centre of the i-th poster tile.
-export function tileColour(page, i) {
+export async function tileColour(page, i) {
+  await nextFrame(page); // rebuilt tiles get their position on the next render
   return page.evaluate(i => {
     const c = document.getElementById('poster'), t = document.querySelectorAll('#tiles .tile')[i];
     const x = (parseFloat(t.style.left) + parseFloat(t.style.width) / 2) / 100 * c.width;

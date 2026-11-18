@@ -76,6 +76,18 @@ test('Auto picks the column count, and changing the poster size runs it', async 
   await expect(cols).toHaveValue('4');
 });
 
+test('switching lists runs Auto columns', async ({ page }) => {
+  await pickList(page);
+  const cols = page.locator('#cols');
+  await cols.fill('9'); // more than any list here has films
+  await page.locator('#source').selectOption({ label: 'Watched (4)' });
+  await expect(tiles(page)).toHaveCount(4);
+  const picked = await cols.inputValue();
+  expect(Number(picked)).toBeLessThanOrEqual(4);
+  await page.locator('#cols-auto').click();
+  await expect(cols).toHaveValue(picked);
+});
+
 test('caption parts can be turned off separately, and the rows close up', async ({ page }) => {
   await pickList(page);
   await page.locator('#size').selectOption('');
