@@ -419,9 +419,11 @@ function autoCols() {
 }
 
 // Draw the poster onto context c at `scale` output pixels per poster unit.
-// dy: skip this many output pixels from the top (to draw one strip of a big export).
-function draw(c, L, scale, dy = 0) {
-  c.setTransform(scale, 0, 0, scale, 0, -dy); // draw in poster units
+// dx, dy: skip this many output pixels from the left / top (to draw one strip of a big export, or a zoomed view).
+function draw(c, L, scale, dy = 0, dx = 0) {
+  c.setTransform(scale, 0, 0, scale, -dx, -dy); // draw in poster units
+  // The part of the poster this canvas shows, in poster units: tiles outside it are skipped.
+  const vx = dx / scale, vy = dy / scale, vw = c.canvas.width / scale, vh = c.canvas.height / scale;
   const s = L.style;
   drawBackground(c, s, L.H);
   drawBorder(c, s, L.H);
@@ -443,6 +445,7 @@ function draw(c, L, scale, dy = 0) {
   let loading = 0; // films still waiting for a TMDB lookup (undefined) or their image; null = no poster: done
   L.list.forEach((f, i) => {
     const [x, y] = L.at(i);
+    if (x > vx + vw || x + tileW < vx || y > vy + vh || y + tileH + capSize * 5 < vy) return; // off this canvas
     const img = f.poster && posterImage(f.poster, tileW * scale);
     if (f.poster === undefined || (img && !ready(img) && !img.failed)) loading++;
     if (ready(img)) c.drawImage(img, x, y, tileW, tileH);
@@ -470,12 +473,16 @@ function draw(c, L, scale, dy = 0) {
 }
 
 // The on-screen preview: at most 1x (the download dialog renders bigger), within browser canvas limits.
+const previewScale = L => Math.min(1, Math.sqrt(MAX_AREA / (W * L.H)), MAX_SIDE / L.H);
+const pct = (v, total) => (v / total * 100) + '%';
 function render() {
   const L = layout();
-  const scale = Math.min(1, Math.sqrt(MAX_AREA / (W * L.H)), MAX_SIDE / L.H);
+  const scale = previewScale(L);
   canvas.width = Math.floor(W * scale);
   canvas.height = Math.floor(L.H * scale);
-  const loading = draw(ctx, L, scale);
+  let loading = drawView(L, scale);
+  $('mini').hidden = view.z === 1;
+  if (view.z > 1) loading = drawMini(L); // the zoomed view only draws what's in it: count from the whole poster
   $('loading').hidden = !loading;
   $('loading-n').textContent = loading === 1 ? 'Loading 1 poster…' : `Loading ${loading} posters…`;
 
@@ -487,7 +494,6 @@ function render() {
   syncPickers(L.style);
 
   // Line the editing overlay up with the drawn posters, in % so it follows the canvas's CSS size.
-  const pct = (v, total) => (v / total * 100) + '%';
   [...$('tiles').children].forEach((el, i) => {
     const [x, y] = L.at(i);
     el.style.left = pct(x, W);
@@ -1069,6 +1075,76 @@ $('dl-form').onsubmit = async e => {
     go.disabled = false; go.textContent = 'Download';
   }
 };
+
+// ---------- Zoom: a closer look at part of the poster, with a map of where that is ----------
+// The preview canvas keeps its size and draws the part in view at z × (sharp: it's drawn fresh, not enlarged).
+const ZOOMS = [1, 1.5, 2, 3, 4, 6, 8];
+const view = { z: 1, cx: 0.5, cy: 0.5 }; // zoom, and the point at the view's centre (fractions of the poster)
+// Top-left of the part in view, in poster units, kept inside the poster.
+function viewOrigin(L) {
+  const w = W / view.z, h = L.H / view.z;
+  const x = Math.max(0, Math.min(W - w, view.cx * W - w / 2)), y = Math.max(0, Math.min(L.H - h, view.cy * L.H - h / 2));
+  view.cx = (x + w / 2) / W; view.cy = (y + h / 2) / L.H; // so dragging past an edge doesn't build up
+  return [x, y];
+}
+function drawView(L, scale) {
+  const [x, y] = viewOrigin(L), s = scale * view.z;
+  const box = $('mini-view').style;
+  Object.assign(box, { left: pct(x, W), top: pct(y, L.H), width: pct(W / view.z, W), height: pct(L.H / view.z, L.H) });
+  return draw(ctx, L, s, y * s, x * s);
+}
+// The map: the whole poster, small, in the preview's corner. Returns how many posters are still loading.
+function drawMini(L) {
+  const r = canvas.getBoundingClientRect(), dpr = devicePixelRatio || 1;
+  let w = Math.min(150, r.width * 0.3);
+  if (w * L.H / W > r.height * 0.6) w = r.height * 0.6 * W / L.H; // a very tall poster: keep the map short enough
+  const mc = $('mini-poster');
+  Object.assign($('mini').style, { width: w + 'px', height: w * L.H / W + 'px' });
+  mc.width = Math.round(w * dpr); mc.height = Math.round(w * L.H / W * dpr);
+  return draw(mc.getContext('2d'), L, mc.width / W);
+}
+let viewFrame = 0;
+const requestView = () => { viewFrame ||= requestAnimationFrame(() => { viewFrame = 0; const L = layout(); drawView(L, previewScale(L)); }); };
+
+function setZoom(z) {
+  view.z = z;
+  const i = ZOOMS.indexOf(z);
+  $('zoom-out').disabled = i === 0;
+  $('zoom-in').disabled = i === ZOOMS.length - 1;
+  $('zoom-level').textContent = z + '×';
+  $('zoom-reset').hidden = z === 1;
+  $('stage').classList.toggle('zoomed', z > 1);
+  $('edit-hint').textContent = z > 1 ? 'Drag to move around · zoom out to edit' : 'Drag to reorder · ✕ to remove';
+  scheduleRender(true);
+}
+$('zoom-in').onclick = () => setZoom(ZOOMS[Math.min(ZOOMS.length - 1, ZOOMS.indexOf(view.z) + 1)]);
+$('zoom-reset').onclick = () => setZoom(1);
+$('zoom-out').onclick = () => setZoom(ZOOMS[Math.max(0, ZOOMS.indexOf(view.z) - 1)]);
+
+// Drag the poster to move the view (it follows the pointer), or drag / click in the map to jump there.
+let pan = null;
+$('stage').addEventListener('pointerdown', e => {
+  if (view.z === 1 || e.button !== 0) return;
+  const inMap = $('mini').contains(e.target);
+  pan = { map: inMap, x: e.clientX, y: e.clientY, cx: view.cx, cy: view.cy, id: e.pointerId };
+  $('stage').setPointerCapture(e.pointerId);
+  $('stage').classList.add('panning');
+  movePan(e);
+});
+function movePan(e) {
+  if (!pan || e.pointerId !== pan.id) return;
+  if (pan.map) {
+    const r = $('mini').getBoundingClientRect();
+    view.cx = (e.clientX - r.left) / r.width; view.cy = (e.clientY - r.top) / r.height;
+  } else {
+    const r = canvas.getBoundingClientRect();
+    view.cx = pan.cx - (e.clientX - pan.x) / r.width / view.z;
+    view.cy = pan.cy - (e.clientY - pan.y) / r.height / view.z;
+  }
+  requestView();
+}
+$('stage').addEventListener('pointermove', movePan);
+for (const ev of ['pointerup', 'pointercancel']) $('stage').addEventListener(ev, () => { pan = null; $('stage').classList.remove('panning'); });
 
 if (LOCAL && !TMDB_API_KEY) status('Local dev: add your TMDB key in config.local.js (see README), or run the Worker on :8787.');
 // The page starts as "Restoring your last session…" when there is one (see index.html); clear it when done.

@@ -119,6 +119,17 @@
   .hint { color: var(--muted); font-size: 13px; margin: 0; }
   .stepper { display: flex; align-items: center; gap: 4px; }
   .stepper button { width: 2em; padding: 4px 0; font-weight: 600; }
+  #zoom-level { min-width: 2.6em; text-align: center; font-variant-numeric: tabular-nums; }
+  /* Zoomed in: drag the poster to move around; editing pauses until back at 1×. */
+  #stage.zoomed { cursor: grab; touch-action: none; }
+  #stage.zoomed.panning { cursor: grabbing; }
+  #stage.zoomed #tiles { display: none; }
+  /* The map stays in sight while a poster taller than the window scrolls by: a zero-height sticky dock holds it. */
+  #mini-dock { position: sticky; top: 10px; height: 0; z-index: 5; }
+  #mini { position: absolute; top: 10px; right: 10px; line-height: 0; cursor: pointer; touch-action: none;
+    border: 1px solid var(--line); border-radius: 4px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,.5); }
+  #mini canvas { width: 100%; height: 100%; opacity: .75; }
+  #mini-view { position: absolute; border: 2px solid var(--accent); box-shadow: 0 0 0 999px rgba(0,0,0,.45); pointer-events: none; }
   /* The −/+ buttons replace the browser's tiny spinner arrows. */
   #cols { width: 3.5em; text-align: center; -moz-appearance: textfield; appearance: textfield; }
   #cols::-webkit-inner-spin-button, #cols::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
@@ -316,12 +327,22 @@
 
   <section class="preview">
     <div id="stage">
+      <!-- While zoomed: the whole poster, with a box showing the part in view. Drag or click in it to move. -->
+      <div id="mini-dock"><div id="mini" hidden title="Drag the box to move around the poster"><canvas id="mini-poster" aria-hidden="true"></canvas><div id="mini-view"></div></div></div>
       <canvas id="poster" aria-label="Poster preview"></canvas>
       <div id="tiles"></div>
       <div id="working" role="status" hidden><span class="spinner"></span> Working…</div>
     </div>
     <p id="loading" class="hint" role="status" hidden><span class="spinner"></span> <span id="loading-n"></span></p>
-    <p class="hint">Drag to reorder · ✕ to remove</p>
+    <div class="row">
+      <span class="stepper" role="group" aria-label="Zoom">
+        <button id="zoom-out" type="button" aria-label="Zoom out" disabled>−</button>
+        <output id="zoom-level" aria-live="polite">1×</output>
+        <button id="zoom-in" type="button" aria-label="Zoom in">+</button>
+      </span>
+      <button id="zoom-reset" type="button" title="Back to the whole poster" hidden>Reset</button>
+      <p class="hint" id="edit-hint">Drag to reorder · ✕ to remove</p>
+    </div>
     <button id="download" class="primary" type="button">Download…</button>
   </section>
 </main>

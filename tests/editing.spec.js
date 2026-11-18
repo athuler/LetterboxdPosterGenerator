@@ -187,3 +187,49 @@ test.describe('on a touch screen', () => {
     await expect(tiles(page)).toHaveCount(4);
   });
 });
+
+test('zoom buttons show part of the poster closer, with a map to see and move where', async ({ page }) => {
+  await pickList(page);
+  await expect(page.locator('#mini')).toBeHidden();
+  await expect(page.locator('#zoom-out')).toBeDisabled();
+  const before = await page.evaluate(() => document.getElementById('poster').toDataURL());
+  await page.locator('#zoom-in').click();
+  await page.locator('#zoom-in').click();
+  await expect(page.locator('#zoom-level')).toHaveText('2×');
+  await expect(page.locator('#mini')).toBeVisible();
+  await expect(tiles(page).first()).toBeHidden(); // editing pauses while zoomed
+  await expect(page.locator('#edit-hint')).toHaveText(/zoom out to edit/);
+  await nextFrame(page);
+  expect(await page.evaluate(() => document.getElementById('poster').toDataURL())).not.toBe(before);
+  // The box in the map covers half the poster each way, centred to start with.
+  const box = page.locator('#mini-view');
+  const share = () => box.evaluate(b => [b.style.left, b.style.top, b.style.width, b.style.height].map(parseFloat));
+  expect(await share()).toEqual([25, 25, 50, 50]);
+
+  // Dragging the poster left by half its width moves the view right by a quarter of the poster at 2×.
+  const r = await page.locator('#poster').boundingBox();
+  const y = Math.max(r.y, 0) + 100; // the poster can be taller than the window: stay on the visible part
+  await page.mouse.move(r.x + r.width * 0.75, y);
+  await page.mouse.down();
+  await page.mouse.move(r.x + r.width * 0.25, y, { steps: 4 });
+  await page.mouse.up();
+  await nextFrame(page);
+  expect(await share()).toEqual([50, 25, 50, 50]);
+
+  // Clicking the map's top-left corner jumps there; the map stays in sight even when the poster's top has scrolled away.
+  const m = await page.locator('#mini').boundingBox();
+  expect(m.y).toBeGreaterThanOrEqual(0);
+  await page.mouse.click(m.x + 2, m.y + 2);
+  await nextFrame(page);
+  expect(await share()).toEqual([0, 0, 50, 50]);
+
+  await page.locator('#zoom-out').click();
+  await expect(page.locator('#zoom-level')).toHaveText('1.5×');
+  await page.locator('#zoom-reset').click(); // straight back to 1×
+  await expect(page.locator('#zoom-level')).toHaveText('1×');
+  await expect(page.locator('#zoom-reset')).toBeHidden();
+  await expect(page.locator('#mini')).toBeHidden();
+  await expect(tiles(page).first()).toBeVisible();
+  await nextFrame(page);
+  expect(await page.evaluate(() => document.getElementById('poster').toDataURL())).toBe(before);
+});
