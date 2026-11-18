@@ -24,14 +24,15 @@ Turn your Letterboxd lists into a poster: a grid of film posters with a title an
 - **Share:** send the poster to your phone's share menu, or copy it and post it to X, Bluesky, Threads, Facebook or Reddit.
 - **Remembered:** your settings, list and edits come back when you return, and your last 3 exports can be reopened in one click.
 
-The same list in five of the style presets (Letterboxd, Cinema, Paper, Midnight, Garden):
+The same list in four of the style presets (Letterboxd, Cinema, Paper, Midnight):
 
 <p>
-  <a href="https://postergenerator.andreithuler.com"><img src="docs/style-letterboxd.jpg" width="19%" alt="The Letterboxd Top 250 in the Letterboxd style: dark grey background, white sans-serif title and captions"></a>
-  <a href="https://postergenerator.andreithuler.com"><img src="docs/style-cinema.jpg" width="19%" alt="The Letterboxd Top 250 in the Cinema style: dark red gradient background, film-strip border, cream condensed title"></a>
-  <a href="https://postergenerator.andreithuler.com"><img src="docs/style-paper.jpg" width="19%" alt="The Letterboxd Top 250 in the Paper style: cream background, double-line border, dark serif title"></a>
-  <a href="https://postergenerator.andreithuler.com"><img src="docs/style-midnight.jpg" width="19%" alt="The Letterboxd Top 250 in the Midnight style: navy spotlight background, corner border, pale blue title"></a>
-  <a href="https://postergenerator.andreithuler.com"><img src="docs/style-garden.jpg" width="19%" alt="The Letterboxd Top 250 in the Garden style: pink dotted background, flower border, rounded burgundy title"></a>
+  <a href="https://postergenerator.andreithuler.com"><img src="docs/style-letterboxd.jpg" width="49%" alt="The Letterboxd Top 250 in the Letterboxd style: dark grey background, white sans-serif title and captions"></a>
+  <a href="https://postergenerator.andreithuler.com"><img src="docs/style-cinema.jpg" width="49%" alt="The Letterboxd Top 250 in the Cinema style: dark red gradient background, film-strip border, cream condensed title"></a>
+</p>
+<p>
+  <a href="https://postergenerator.andreithuler.com"><img src="docs/style-paper.jpg" width="49%" alt="The Letterboxd Top 250 in the Paper style: cream background, double-line border, dark serif title"></a>
+  <a href="https://postergenerator.andreithuler.com"><img src="docs/style-midnight.jpg" width="49%" alt="The Letterboxd Top 250 in the Midnight style: navy spotlight background, corner border, pale blue title"></a>
 </p>
 
 Zoomed in to 4×, with the map of the whole poster in the corner:
