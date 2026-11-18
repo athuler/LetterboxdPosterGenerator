@@ -1,5 +1,5 @@
 // Sorting, reordering, removing, adding from search, hiding films without posters.
-import { test, expect, dropZip, tiles, names, order, tileColour, ART, LIST } from './helpers.js';
+import { test, expect, customise, waitForSave, nextFrame, dropZip, tiles, names, order, tileColour, ART, LIST } from './helpers.js';
 
 const pickList = async page => {
   await page.goto('/');
@@ -116,4 +116,40 @@ test('"Hide films without posters" leaves them out, and editing still works on w
   await page.locator('#hide-missing').uncheck();
   await expect(tiles(page)).toHaveCount(5);
   expect(await names(page)).toContain('Noposter Film');
+});
+
+test('a long name on a small no-poster tile stays inside the tile', async ({ page }) => {
+  await pickList(page);
+  await waitForSave(page, s => s.films.length === 5);
+  // Give the no-poster film a long name, then reload so it is drawn from the saved list.
+  await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('state'));
+    const f = s.films.find(f => f.name === 'Noposter Film');
+    f.name = 'Noposter Film With A Very Long Title That Goes On And On'; f.poster = null;
+    localStorage.setItem('state', JSON.stringify(s));
+  });
+  await page.reload();
+  await expect(tiles(page)).toHaveCount(5);
+  await customise(page);
+  for (const id of ['cap-title', 'cap-year', 'cap-rating']) await page.locator(`#${id}`).uncheck();
+  await page.locator('#bg').fill('#000000');
+  await page.locator('#fg').fill('#ffffff');
+  await page.locator('#cols').fill('40'); // tiny tiles
+  await page.locator('#np-size').fill('2'); // and the biggest text: still clipped to the tile
+  await nextFrame(page);
+  const i = (await names(page)).indexOf('Noposter Film With A Very Long Title That Goes On And On');
+  // Count white text pixels in the strips just above and below that tile.
+  const spill = await page.evaluate(i => {
+    const c = document.getElementById('poster'), t = document.querySelectorAll('#tiles .tile')[i];
+    const px = (v, total) => parseFloat(v) / 100 * total;
+    const x = Math.floor(px(t.style.left, c.width)), w = Math.ceil(px(t.style.width, c.width));
+    const top = Math.floor(px(t.style.top, c.height)), bottom = Math.ceil(top + px(t.style.height, c.height));
+    const strip = (y0, y1) => {
+      const d = c.getContext('2d').getImageData(x, y0, w, Math.max(1, y1 - y0)).data;
+      let n = 0; for (let k = 0; k < d.length; k += 4) if (d[k] > 150) n++;
+      return n;
+    };
+    return strip(Math.max(0, top - 20), top - 1) + strip(bottom + 1, Math.min(c.height, bottom + 20));
+  }, i);
+  expect(spill).toBe(0);
 });

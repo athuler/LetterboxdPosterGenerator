@@ -184,3 +184,14 @@ test('pickers set the value, show it as pressed, and follow presets and reloads'
   await expect(pressed('size')).toHaveAttribute('data-value', '0.5625');
   await expect(pressed('border')).toHaveAttribute('data-value', 'flowers');
 });
+
+test('the "Films without a poster" slider resizes their names and is saved', async ({ page }) => {
+  await pickList(page);
+  await page.locator('#hide-missing').uncheck();
+  const before = await snapshot(page);
+  await page.locator('#np-size').fill('1.6');
+  expect(await snapshot(page)).not.toBe(before);
+  await waitForSave(page, s => s['np-size'] === '1.6');
+  await page.reload();
+  await expect(page.locator('#np-size')).toHaveValue('1.6');
+});

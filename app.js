@@ -226,19 +226,25 @@ function fit(c, text, maxW) {
 }
 const stars = r => '★'.repeat(Math.floor(r)) + (r % 1 ? '½' : '');
 
-function textTile(c, f, x, y, w, h, fg, family) {
+function textTile(c, f, x, y, w, h, fg, family, scale = 1) {
   c.save();
   c.globalAlpha = 0.12; c.fillStyle = fg; c.fillRect(x, y, w, h);
   c.globalAlpha = 1; c.fillStyle = fg; c.textAlign = 'center'; c.textBaseline = 'middle';
-  const size = Math.max(12, w / 9);
-  c.font = `600 ${size}px ${family}`;
-  const lines = [];
-  for (const word of f.name.split(' ')) {
-    const last = lines.length - 1;
-    if (last >= 0 && c.measureText(lines[last] + ' ' + word).width < w * 0.85) lines[last] += ' ' + word;
-    else lines.push(word);
+  c.beginPath(); c.rect(x, y, w, h); c.clip(); // the name never spills onto neighbours or captions
+  // Scales with the tile and the "Films without a poster" slider, shrinking a little to fit; past that, extra lines are cut.
+  let size = w / 6 * scale, lines;
+  for (let k = 0; k < 5; k++) {
+    c.font = `600 ${size}px ${family}`;
+    lines = [];
+    for (const word of f.name.split(' ')) {
+      const last = lines.length - 1;
+      if (last >= 0 && c.measureText(lines[last] + ' ' + word).width < w * 0.85) lines[last] += ' ' + word;
+      else lines.push(word);
+    }
+    if (lines.length * size * 1.2 <= h * 0.9 || k === 4) break;
+    size *= 0.85;
   }
-  const shown = lines.slice(0, 6);
+  const shown = lines.slice(0, Math.max(1, Math.floor(h * 0.9 / (size * 1.2))));
   shown.forEach((l, i) => c.fillText(fit(c, l, w * 0.9), x + w / 2, y + h / 2 + (i - (shown.length - 1) / 2) * size * 1.2));
   c.restore();
 }
@@ -297,6 +303,7 @@ function styleOf() {
     fg: $('fg-auto').checked ? autoFg(bgStyle, bg, bg2) : $('fg').value,
     titleFont: font($('title-font').value), titleSize: Number($('title-size').value) || 76,
     capFont: font($('cap-font').value), capScale: Number($('cap-size').value) || 1,
+    npScale: Number($('np-size').value) || 1,
     border: $('border').value,
   };
 }
@@ -383,7 +390,7 @@ function draw(c, L, scale) {
     const [x, y] = L.at(i);
     const img = f.poster && posterImage(f.poster, tileW * scale);
     if (ready(img)) c.drawImage(img, x, y, tileW, tileH);
-    else textTile(c, f, x, y, tileW, tileH, L.fg, s.capFont);
+    else textTile(c, f, x, y, tileW, tileH, L.fg, s.capFont, s.npScale);
     c.fillStyle = L.fg; c.textAlign = 'center'; c.textBaseline = 'top';
     let ty = y + tileH + capSize * 0.4;
     if (cap.title) {
@@ -513,7 +520,7 @@ function update() { applySort(); renderTiles(); resolvePosters(); scheduleRender
 
 // ---------- Persistence: settings + film list in localStorage, recent zips in IndexedDB ----------
 // Everything stays in this browser. Storage can be blocked (private windows), so every access is guarded.
-const STYLE = ['bg-style', 'bg', 'bg2', 'fg', 'title-font', 'title-size', 'cap-font', 'cap-size', 'border'];
+const STYLE = ['bg-style', 'bg', 'bg2', 'fg', 'title-font', 'title-size', 'cap-font', 'cap-size', 'np-size', 'border'];
 const SETTINGS = ['title', 'size', 'cols', 'sort', ...STYLE];
 const CHECKS = ['cap-title', 'cap-year', 'cap-rating', 'hide-missing', 'fg-auto', 'title-on'];
 const MAX_RECENT = 3;
@@ -871,12 +878,17 @@ function sizeOptions(fmt) {
 
 // File size estimates: encode the on-screen preview once and scale its bytes per pixel up.
 // Bigger renders compress a bit better (smoother upscaled detail); the ^-0.25 matches measured exports.
-let bpp = null;
+let bpp = null, measureRun = 0;
 async function measureBpp() {
-  const px = canvas.width * canvas.height;
-  const enc = type => new Promise(r => canvas.toBlob(b => r(b ? b.size / px : 0), type, 0.92));
+  // A copy at most 500 px wide is plenty to sample, and much quicker to encode than the full preview.
+  const k = Math.min(1, 500 / canvas.width);
+  const sample = Object.assign(document.createElement('canvas'),
+    { width: Math.max(1, Math.round(canvas.width * k)), height: Math.max(1, Math.round(canvas.height * k)) });
+  sample.getContext('2d').drawImage(canvas, 0, 0, sample.width, sample.height);
+  const px = sample.width * sample.height;
+  const enc = type => new Promise(r => sample.toBlob(b => r(b ? b.size / px : 0), type, 0.92));
   const [png, pdf] = await Promise.all([enc('image/png'), enc('image/jpeg')]); // PDFs embed a JPEG
-  return { png, pdf, s0: canvas.width / W };
+  return { png, pdf, s0: sample.width / W };
 }
 function estimate(o, fmt) {
   if (!bpp || !bpp[fmt]) return '';
@@ -948,8 +960,9 @@ $('download').onclick = () => {
   renderSizes();
   $('dl').showModal();
   delete $('dl-sizes').dataset.ready;
-  measureBpp().then(b => { bpp = b; if ($('dl').open) renderSizes(true); }, () => {})
-    .finally(() => { $('dl-sizes').dataset.ready = ''; }); // the rows are final now (tests wait for this)
+  const run = ++measureRun; // only the latest opening's measurement counts
+  measureBpp().then(b => { if (run === measureRun) { bpp = b; if ($('dl').open) renderSizes(true); } }, () => {})
+    .finally(() => { if (run === measureRun) $('dl-sizes').dataset.ready = ''; }); // rows are final now (tests wait for this)
 };
 $('dl-png').onchange = $('dl-pdf').onchange = () => renderSizes();
 $('dl-cancel').onclick = () => $('dl').close();
