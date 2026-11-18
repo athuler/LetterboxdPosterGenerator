@@ -1,28 +1,75 @@
-# LetterboxdPosterGenerator
+# Letterboxd Poster Generator
 
-Turn your Letterboxd lists into a poster: a grid of film posters with an optional title and captions, previewed live and downloadable as a PNG.
+[![Letterboxd Poster Generator](docs/banner.jpg)](https://postergenerator.andreithuler.com)
 
-## Use it
+Turn your Letterboxd lists into a poster: a grid of film posters with a title and captions, ready to print, set as a wallpaper or share.
 
-1. Export your data at <https://letterboxd.com/data/export/>.
-2. Drop the `.zip` on the page. It is read entirely in your browser, nothing is uploaded.
-3. Pick a source (any of your lists, Watchlist, Watched or Ratings), or start empty.
-4. Add films by searching TMDB (only TMDB results can be added), drag posters on the preview to reorder them, use ✕ (or Tab + arrow keys / Delete) to move and remove them, tweak the title, columns and captions. Under **Style**, click a preset thumbnail (Letterboxd, Paper, Cinema, Midnight, Garden, Mono), and open **Customise** to adjust anything after: background (solid, gradient, spotlight, dots, stripes, grid, with a second colour), text colour (automatic for contrast, or your own), title on/off, font and size, caption font and size (each with **Wrap**, so long titles go onto more lines instead of being cut off), a text size for films without a poster, and a border (line, double line, corners, film strip, flowers). Fonts are ones already on your device, so they can look a little different from one computer to another. **Auto** sets the column count that makes the posters biggest on a fixed page size, or gives a roughly A-series shape on "Fit to films"; it also runs whenever you change the poster size or pick another list. Captions can show the film's title, year and rating, each on or off. **Hide films without posters** leaves out films TMDB has no poster for (the count is shown next to it).
-5. Pick a **poster size** from the shapes under Layout: "Fit" grows the image to fit, or choose a print ratio (A4, A3, A2, …, Letter, 2:3, 3:4, 4:5, 11×17, square) or a wallpaper size. Fixed sizes centre the grid on the page.
-6. Sort by list order, title, year, rating or date logged (the last two only when the source has them), or shuffle. Dragging a poster switches to **Custom**, which keeps your hand-made order while you try other sorts.
-7. Click **Download…**, choose **PNG** or **PDF (print)** and a size. PNG sizes are pixel dimensions (screen resolutions for wallpapers); PDF sizes are paper sizes matching the poster's shape, rendered at up to 300 dpi. Sizes where the captions would be too small to read easily (under 12 px, or 6 pt in print) are flagged, and the smallest size without that problem is marked **Recommended**. Each size also shows an estimated file size. Without captions, the recommendation is based on how sharp the poster art is. Exports use larger poster art when the size needs it, up to the biggest canvas your browser supports.
+**Use it at <https://postergenerator.andreithuler.com>**. It's free, needs no account, and your data never leaves your browser.
 
-Your work is saved in this browser: settings, the chosen list and your film edits come back on reload. The last 3 exports you opened are listed under **Recent uploads**, so you can reopen one with a click; ✕ removes one. Despite the name, your exports and edits are never uploaded: all of this stays in your browser (localStorage and IndexedDB). The public site uses Google Analytics for visit statistics.
+[![Support on Ko-fi](https://img.shields.io/badge/Support_on-Ko--fi-FF5E5B?logo=ko-fi&logoColor=white&style=for-the-badge)](https://ko-fi.com/andreithuler)
+[![Sponsor on GitHub](https://img.shields.io/badge/Sponsor_on-GitHub-EA4AAA?logo=githubsponsors&logoColor=white&style=for-the-badge)](https://github.com/sponsors/athuler)
 
-There's no film limit. Very long lists are exported at a lower resolution, so the image stays within browser canvas limits.
+[![The app with the Letterboxd Top 250 as a poster](docs/app.jpg)](https://postergenerator.andreithuler.com)
 
-## How the TMDB key stays secret
+## Features
 
-The site never sees the TMDB key. It calls a small Cloudflare Worker ([worker/worker.js](worker/worker.js)) that holds the key as a secret, forwards `/search?query=…&year=…` to TMDB, and only answers requests from the allowed origins. [config.js](config.js) holds just the Worker's public URL. Poster images load straight from `image.tmdb.org`, which needs no key.
+- **Any list:** your Letterboxd lists, Watchlist, Watched or Ratings, straight from Letterboxd's data export. You can also start empty and add films by searching TMDB.
+- **Edit on the poster:** drag to reorder, ✕ to remove (or Tab, the arrow keys and Delete). Sort by list order, title, year, rating or date logged, or shuffle.
+- **Sizes for print and screens:** fit to the films, A and Letter paper, 2:3, 3:4, 4:5, 11×17, square, desktop and phone wallpapers. **Auto** picks the column count that makes the posters biggest.
+- **Styles:** six presets, plus backgrounds, colours, fonts, borders, caption parts (title, year, rating), text wrapping and a footer line.
+- **Zoom:** look closely at any part of the poster to check small captions, with a map showing where you are.
+- **Download:** PNG at several sizes, or a print-ready PDF up to A0 at 300 dpi. Each size shows its file size and flags captions too small to read; the best one is recommended.
+- **Share:** send the poster to your phone's share menu, or copy it and post it to X, Bluesky, Threads, Facebook or Reddit.
+- **Remembered:** your settings, list and edits come back when you return, and your last 3 exports can be reopened in one click.
 
-## Local development
+The same list in four of the style presets (Cinema, Paper, Midnight, Garden):
 
-No build step, no Node needed.
+<p>
+  <a href="https://postergenerator.andreithuler.com"><img src="docs/style-cinema.jpg" width="24%" alt="Cinema style"></a>
+  <a href="https://postergenerator.andreithuler.com"><img src="docs/style-paper.jpg" width="24%" alt="Paper style"></a>
+  <a href="https://postergenerator.andreithuler.com"><img src="docs/style-midnight.jpg" width="24%" alt="Midnight style"></a>
+  <a href="https://postergenerator.andreithuler.com"><img src="docs/style-garden.jpg" width="24%" alt="Garden style"></a>
+</p>
+
+Zoomed in to 4×, with the map of the whole poster in the corner:
+
+[![Zoomed in on the poster](docs/zoom.jpg)](https://postergenerator.andreithuler.com)
+
+## How to use it
+
+1. Export your data at <https://letterboxd.com/data/export/>. Letterboxd emails you a `.zip`.
+2. Open the site and drop the `.zip` on it (or click to choose it).
+3. Pick a list. Its films appear as a poster, with its name as the title.
+4. Choose a poster size under **Layout**, and a look under **Style presets**. Open **Customise** to fine-tune it.
+5. Click **Download…** to save it, or **Share…** to post it.
+
+<p>
+  <a href="https://postergenerator.andreithuler.com"><img src="docs/download.png" width="49%" alt="The Download dialog: PNG or PDF, with sizes and file sizes"></a>
+  <a href="https://postergenerator.andreithuler.com"><img src="docs/share.png" width="49%" alt="The Share dialog with links to X, Bluesky, Threads, Facebook and Reddit"></a>
+</p>
+
+Films TMDB has no poster for are drawn as their name; **Hide no-poster** leaves them out. Fonts come from your device, so they can look a little different from one computer to another.
+
+## Privacy
+
+Your export is read in your browser and never uploaded. Settings, edits and recent exports are stored in this browser only (localStorage and IndexedDB). Film searches go to TMDB through a small proxy (see below), and poster images load from TMDB. The public site uses Google Analytics for visit counts.
+
+## Support and feedback
+
+Found a bug or have an idea? [Open an issue](https://github.com/athuler/LetterboxdPosterGenerator/issues).
+
+If you enjoy it, you can support it on [Ko-fi](https://ko-fi.com/andreithuler) or [GitHub Sponsors](https://github.com/sponsors/athuler):
+
+[![Support on Ko-fi](https://img.shields.io/badge/Support_on-Ko--fi-FF5E5B?logo=ko-fi&logoColor=white&style=for-the-badge)](https://ko-fi.com/andreithuler)
+[![Sponsor on GitHub](https://img.shields.io/badge/Sponsor_on-GitHub-EA4AAA?logo=githubsponsors&logoColor=white&style=for-the-badge)](https://github.com/sponsors/athuler)
+
+---
+
+## Development
+
+Plain HTML, CSS and JavaScript modules: no build step. The app is [index.html](index.html), [app.js](app.js) (everything interactive) and [parse.js](parse.js) (reads Letterboxd's CSV files).
+
+### Run it locally
 
 1. Get a free TMDB API key at <https://www.themoviedb.org/settings/api>.
 2. Create `config.local.js` in the repo root (gitignored, never deployed):
@@ -41,7 +88,7 @@ On `localhost`, a key in `config.local.js` makes the app call TMDB directly, ski
 
 ### Tests
 
-Browser tests ([tests/](tests/), [Playwright](https://playwright.dev)) cover importing an export, recent uploads and restoring after a reload, sorting, reordering and removing, search, hiding films without posters, poster sizes, columns, captions, style options and presets, the download dialog (including real PNG and PDF files) and the CSV parser. They fake TMDB and the poster images, so they need no API key or network for TMDB.
+Browser tests in [tests/](tests/) use [Playwright](https://playwright.dev). They cover importing an export, restoring after a reload, editing, search, poster sizes and styles, zoom, downloads (real PNG and PDF files), sharing and the CSV parser. TMDB and the poster images are faked, so no API key or network is needed.
 
 Needs Node 18+ and Python 3 (for the static server the tests start on port 4173):
 
@@ -52,6 +99,10 @@ npm test
 ```
 
 GitHub Actions runs them on every pull request and branch push. On `main` they run before deploying, and a failure stops the deploy.
+
+### How the TMDB key stays secret
+
+The site never sees the TMDB key. It calls a small Cloudflare Worker ([worker/worker.js](worker/worker.js)) that holds the key as a secret, forwards `/search?query=…&year=…` to TMDB, and only answers requests from the allowed origins. [config.js](config.js) holds just the Worker's public URL. Poster images load straight from `image.tmdb.org`, which needs no key.
 
 ### Testing the Worker locally (optional)
 
@@ -78,7 +129,7 @@ Only needed when changing `worker/`. Remove `config.local.js` (or leave its key 
 
 Without a local key, `config.js` points `localhost` at the local Worker on port 8787.
 
-## Deploy
+### Deploy
 
 **Worker (once, then on every change under `worker/`):**
 
@@ -92,11 +143,11 @@ Without a local key, `config.js` points `localhost` at the local Worker on port 
 
 **Analytics (optional):** add a repository variable (**Settings → Secrets and variables → Actions → Variables**) named `GA_MEASUREMENT_ID` with your Google Analytics ID (`G-…`). The deploy workflow then adds the Google tag to the published `index.html`; the repo copy and local runs stay untracked. Without the variable, nothing is added.
 
-## Caching
+### Caching
 
 - Per browser: poster lookups are cached in `localStorage` (including "no match") and deduplicated in memory, so each film is searched once; poster images are cached by the browser's HTTP cache.
 - Shared: the Worker caches TMDB answers at Cloudflare's edge for a week. This only takes effect on a custom domain, not on `*.workers.dev`.
 
 ## Credits
 
-This product uses the TMDB API but is not endorsed or certified by TMDB. Not affiliated with Letterboxd.
+Made by [Andrei Thüler](https://andreithuler.com). Posters and film data from the [TMDB](https://www.themoviedb.org/) API. Not affiliated with, endorsed by, or certified by TMDB or Letterboxd. Social icons from [Simple Icons](https://simpleicons.org) (CC0). Screenshots show the top 250 of [Letterboxd's Top 500 Films](https://letterboxd.com/official/list/letterboxds-top-500-films/).
