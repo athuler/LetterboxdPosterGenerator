@@ -9,20 +9,18 @@
 
 [Turn your Letterboxd lists into a poster](https://postergenerator.andreithuler.com): a grid of film posters with a title and captions, ready to print, set as a wallpaper or share.
 
-[![The Letterboxd Poster Generator in a browser: controls for the list, title, poster size, columns and style presets on the left, and a preview on the right of the Letterboxd Top 250 as an A-size poster of 250 film posters in 18 columns, each captioned with its title and year](docs/app.jpg)](https://postergenerator.andreithuler.com)
-
 ## Features
 
-- **Any list:** your Letterboxd lists, Watchlist, Watched or Ratings, straight from Letterboxd's data export. You can also start empty and add films by searching TMDB.
-- **Edit on the poster:** drag to reorder, ✕ to remove (or Tab, the arrow keys and Delete). Sort by list order, title, year, rating or date logged, or shuffle.
-- **Sizes for print and screens:** fit to the films, A and Letter paper, 2:3, 3:4, 4:5, 11×17, square, desktop and phone wallpapers. **Auto** picks the column count that makes the posters biggest.
-- **Styles:** six presets, plus backgrounds, colours, fonts, borders, caption parts (title, year, rating), text wrapping and a footer line.
-- **Zoom:** look closely at any part of the poster to check small captions, with a map showing where you are.
-- **Download:** PNG at several sizes, or a print-ready PDF up to A0 at 300 dpi. Each size shows its file size and flags captions too small to read; the best one is recommended.
-- **Share:** send the poster to your phone's share menu, or copy it and post it to X, Bluesky, Threads, Facebook or Reddit.
-- **Remembered:** your settings, list and edits come back when you return, and your last 3 exports can be reopened in one click.
+[![The Letterboxd Poster Generator in a browser: controls for the list, title, poster size, columns and style presets on the left, and a preview on the right of the Letterboxd Top 250 as an A-size poster of 250 film posters in 18 columns, each captioned with its title and year](docs/app.jpg)](https://postergenerator.andreithuler.com)
 
-The same list in four of the style presets (Letterboxd, Cinema, Paper, Midnight):
+- **Any list:** your Letterboxd lists, Watchlist, Watched or Ratings, or films you search for.
+- **Edit on the poster:** drag to reorder, ✕ to remove, sort or shuffle.
+- **Any size:** A and Letter paper, 11×17, square, wallpapers and more.
+- **Styles:** six presets, or your own colours, fonts and borders.
+- **Download** a PNG or a print-ready PDF (up to A0), or **share** it.
+- **Remembered** for next time.
+
+Four of the style presets:
 
 <p>
   <a href="https://postergenerator.andreithuler.com"><img src="docs/style-letterboxd.jpg" width="49%" alt="The Letterboxd Top 250 in the Letterboxd style: dark grey background, white sans-serif title and captions"></a>
@@ -33,28 +31,21 @@ The same list in four of the style presets (Letterboxd, Cinema, Paper, Midnight)
   <a href="https://postergenerator.andreithuler.com"><img src="docs/style-midnight.jpg" width="49%" alt="The Letterboxd Top 250 in the Midnight style: navy spotlight background, corner border, pale blue title"></a>
 </p>
 
-Zoomed in to 4×, with the map of the whole poster in the corner:
+Zoom in to check the details:
 
 [![The preview zoomed in to 4x, showing six film posters per row large enough to read their captions, with a small map of the whole poster in the top-right corner marking the part in view](docs/zoom.jpg)](https://postergenerator.andreithuler.com)
 
-## How to use it
+## Get started
 
-1. Export your data at <https://letterboxd.com/data/export/>. Letterboxd emails you a `.zip`.
-2. Open the site and drop the `.zip` on it (or click to choose it).
-3. Pick a list. Its films appear as a poster, with its name as the title.
-4. Choose a poster size under **Layout**, and a look under **Style presets**. Open **Customise** to fine-tune it.
+1. Download your Letterboxd data at <https://letterboxd.com/data/export/>.
+2. Open the site and import the `.zip`.
+3. Select one of your lists.
+4. Choose a poster size and style. Open **Customise** to fine-tune it.
 5. Click **Download…** to save it, or **Share…** to post it.
-
-<p>
-  <a href="https://postergenerator.andreithuler.com"><img src="docs/download.png" width="49%" alt="The Download dialog: PNG or PDF (print), five sizes from 1,500 × 2,121 px to 6,727 × 9,513 px with their file sizes, the 3,000 × 4,243 px size marked Recommended and the smallest flagged Captions very small, and Cancel, Share and Download buttons"></a>
-  <a href="https://postergenerator.andreithuler.com"><img src="docs/share.png" width="49%" alt="The Share your poster dialog: Poster image copied, an instruction to paste the image into the new post, and buttons for X, Bluesky, Threads, Facebook and Reddit"></a>
-</p>
-
-Films TMDB has no poster for are drawn as their name; **Hide no-poster** leaves them out. Fonts come from your device, so they can look a little different from one computer to another.
 
 ## Privacy
 
-Your export is read in your browser and never uploaded. Settings, edits and recent exports are stored in this browser only (localStorage and IndexedDB). Film searches go to TMDB through a small proxy (see below), and poster images load from TMDB. The public site uses Google Analytics for visit counts.
+Your Letterboxd data never leaves your browser. Settings and posters are cached locally. The public site uses Google Analytics for visit counts.
 
 ## Support and feedback
 
